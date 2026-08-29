@@ -1,0 +1,161 @@
+\documentclass[10.5pt, letterpaper]{article}
+
+\usepackage[top=0.45in, bottom=0.45in, left=0.5in, right=0.5in]{geometry}
+\usepackage[hidelinks, colorlinks=false]{hyperref}
+\usepackage{enumitem}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{titlesec}
+\usepackage{parskip}
+
+\definecolor{navy}{RGB}{26, 86, 155}
+\definecolor{darkgray}{RGB}{40, 40, 40}
+\definecolor{midgray}{RGB}{90, 90, 90}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+
+% Section style
+\titleformat{\section}[block]
+  {\bfseries\large\color{navy}}
+  {}{0pt}{}
+  [{\color{navy}\hrule height 0.6pt}]
+\titlespacing*{\section}{0pt}{8pt}{4pt}
+
+% Lists
+\setlist[itemize]{leftmargin=1.3em, topsep=2pt, itemsep=1pt, parsep=0pt, label=\textbullet}
+
+% Macros
+\newcommand{\jobtitle}[4]{%
+  {\bfseries #1}\hfill{\small\color{midgray}\textit{#2}}\\[-2pt]
+  {\small\color{midgray}\textit{#3}}\hfill{\small\color{midgray}#4}\par\vspace{2pt}%
+}
+
+\newcommand{\projline}[3]{%
+  {\bfseries\color{navy}#1} {\small $|$} {\small\color{midgray}\textit{#2}}\\[-2pt]
+  {\small\color{midgray}#3}\par\vspace{1pt}%
+}
+
+\newcommand{\edline}[4]{%
+  {\bfseries #1}\hfill{\small\color{midgray}\textit{#2}}\\[-2pt]
+  {\small\color{midgray}\textit{#3}}\hfill{\small\color{midgray}#4}\par\vspace{2pt}%
+}
+
+\begin{document}
+
+% ═══ HEADER ══════════════════════════════════════════════
+{\centering
+  {\huge\bfseries\color{darkgray} KAPIL DAGUR}\par\vspace{4pt}
+  {\small\color{midgray}
+    \href{mailto:kapildagur1306@gmail.com}{kapildagur1306@gmail.com}
+    ~$\cdot$~
+    +91-8533-939-537
+    ~$\cdot$~
+    \href{https://linkedin.com/in/kapildagur}{linkedin.com/in/kapildagur}
+    ~$\cdot$~
+    \href{https://github.com/kapildagur}{github.com/kapildagur}
+    ~$\cdot$~
+    \href{https://kapildagur.github.io}{kapildagur.github.io}
+    ~$\cdot$~
+    Noida, India
+  }\par
+}
+
+\vspace{4pt}
+
+% ═══ SUMMARY ══════════════════════════════════════════════
+\section{PROFESSIONAL SUMMARY}
+{\small Results-driven Backend Software Engineer with \textbf{3+ years} of experience architecting scalable RESTful APIs, enterprise SaaS platforms and \textbf{RBI Account Aggregator} systems using \textbf{Python, Django, FastAPI, and Node.js}. Delivered \textbf{70\% API response time reduction} and \textbf{35\% production bug reduction} in live environments. Merged \textbf{2 commits} into SQLAlchemy (Python's most widely used ORM). Passionate about Agentic AI and Model Context Protocol (MCP) --- designing intelligent, tool-augmented systems that bridge LLMs with real-world services.}
+
+% ═══ SKILLS ═══════════════════════════════════════════════
+\section{TECHNICAL SKILLS}
+{\small
+\begin{tabularx}{\linewidth}{@{} >{\bfseries}p{3.9cm} X @{}}
+Languages          & Python, JavaScript, SQL, C/C++, Bash/Shell Scripting \\[1.5pt]
+Backend Frameworks & Django, Django REST Framework (DRF), FastAPI, Flask, Django Ninja, Node.js, Express.js \\[1.5pt]
+Databases \& ORM   & PostgreSQL, MySQL, MongoDB, Redis, SQLite, SQLAlchemy, Alembic, Query Optimization \\[1.5pt]
+Data Processing      & NumPy, Pandas, SciPy, Data Wrangling, Data Cleaning, Exploratory Data Analysis (EDA) \\[1.5pt]
+Agentic AI / MCP   & Model Context Protocol (MCP), LLM Tool Use, AI Agents, Function Calling, OpenAI API, Anthropic API \\[1.5pt]
+DevOps \& CI/CD    & Docker, Docker Compose, GitHub Actions, Jenkins, GitLab CI, CI/CD Pipelines \\[1.5pt]
+Cloud \& Messaging & AWS (EC2, S3, RDS), Celery, RabbitMQ, Nginx, Gunicorn, Uvicorn \\[1.5pt]
+API \& Testing     & RESTful APIs, GraphQL, OpenAPI/Swagger, JWT Auth, pytest, unittest, TDD, 85\%+ Coverage \\[1.5pt]
+Fintech / AA       & RBI Account Aggregator (AA), Consent Management, FIU/FIP \& TSP Integration, Bank Statement Analysis \\[1.5pt]
+Practices          & Microservices Architecture, System Design, Agile/Scrum, Code Review, Git Workflow \\
+\end{tabularx}
+}
+
+% ═══ EXPERIENCE ═══════════════════════════════════════════
+\section{PROFESSIONAL EXPERIENCE}
+
+\jobtitle{Software Engineer}{Apr 2026 -- Present}{SurePass Technologies Pvt. Ltd. $\cdot$ Full-time}{Delhi, India}
+\begin{itemize}\small
+  \item Build backend services for \textbf{finpass.ai}, SurePass's Account Aggregator subsidiary, delivering RBI-regulated financial data-sharing flows to NBFC lending clients
+  \item Improved \textbf{bank statement analyzer} performance and reduced its running cost through pipeline and query optimization
+  \item Developed the \textbf{consent management system} for the Account Aggregator flow --- consent creation, approval, revocation and expiry --- per the RBI AA framework
+  \item Designed and built a \textbf{multi-AA vault system} for secure storage and retrieval of financial information across aggregators
+  \item Integrated \textbf{multiple Account Aggregators and TSPs} behind a unified interface, giving different NBFCs uninterrupted Account Aggregator service
+\end{itemize}
+
+\vspace{5pt}
+
+\jobtitle{Python Backend Developer}{Apr 2024 -- Apr 2026}{In2IT Technologies Pvt. Ltd. $\cdot$ Full-time}{Noida, India}
+\begin{itemize}\small
+  \item Developed enterprise RESTful APIs for \textbf{iProvision} --- a network resource management platform with SD-WAN and SNMP monitoring --- serving \textbf{10,000+ concurrent users} with real-time device configuration and automated alerting; reduced network downtime by \textbf{40\%}
+  \item Built backend services for \textbf{iDashboard} --- successor to Apache Superset --- featuring live data streaming, customizable chart types (bar, line, pie, heat maps), and OpenAPI-documented APIs enabling seamless third-party integrations
+  \item Engineered backend APIs for \textbf{ProWatch} --- an enterprise access control and physical security system --- integrating hardware device communication, real-time event processing pipelines, and role-based access workflows for enterprise clients
+  \item Optimized API response time \textbf{800ms $\rightarrow$ 250ms (70\% improvement)} using Redis caching, Celery async task queues, and PostgreSQL query optimization; scaled concurrent request handling by \textbf{3x}
+  \item Implemented CI/CD pipelines with Docker, GitHub Actions, and Jenkins achieving \textbf{85\%+ code coverage}; reduced production bugs by \textbf{35\%} and deployment time by \textbf{60\%}
+  \item Designed containerized microservices using Docker Compose with multi-stage builds; collaborated in Agile/Scrum sprints reducing delivery time by \textbf{20\%}
+\end{itemize}
+
+\vspace{5pt}
+
+\jobtitle{Backend Developer (Node.js / Python)}{Jun 2023 -- Dec 2023}{CodeQuotient Pvt. Ltd. $\cdot$ Apprenticeship}{Remote}
+\begin{itemize}\small
+  \item Developed and optimized RESTful APIs using \textbf{Node.js, Express.js, and Django REST Framework}; improved backend throughput by \textbf{25\%} through async processing, middleware optimization, and response caching
+  \item Implemented database indexing, query optimization, and connection pooling in PostgreSQL reducing average query time by \textbf{40\%}; integrated ELK stack for monitoring, maintaining \textbf{99.5\%+ system uptime}
+  \item Established code review workflows and mentored \textbf{3 junior developers} on REST API design patterns, clean code principles, and backend testing best practices
+\end{itemize}
+
+% ═══ PROJECTS ════════════════════════════════════════════
+\section{PERSONAL PROJECTS \& OPEN SOURCE}
+
+\projline{FastAPI Tenancy Framework --- Multi-Tenant SaaS Platform}{FastAPI, SQLAlchemy, Alembic, Redis, Docker, JWT}{Jan 2026 -- Present \quad \href{https://github.com/fastapi-extensions/fastapi-tenancy}{github.com/fastapi-extensions/fastapi-tenancy} \quad Published on PyPI}
+\begin{itemize}\small
+  \item Enterprise-grade multi-tenancy library supporting \textbf{4 isolation strategies} (schema-per-tenant, database-per-tenant, RLS, hybrid) with async-first architecture (AsyncSession, contextvars), zero blocking I/O, and auto dialect detection for PostgreSQL, MySQL, SQLite and MSSQL; \textbf{95\%+ test coverage}
+\end{itemize}
+
+\vspace{3pt}
+
+\projline{NetBox FTP Plugin --- Enterprise Network Management}{Django, DRF, PostgreSQL, Strawberry GraphQL, Docker}{}
+\begin{itemize}\small
+  \item Production NetBox plugin with 7 core models, full REST + GraphQL APIs, RBAC, SQL injection/CSRF protection, Alembic migrations; complete documentation and GitHub Actions CI/CD
+\end{itemize}
+
+\vspace{3pt}
+
+\projline{SQLAlchemy --- Open Source Contributions}{Python, PostgreSQL, mypy}{\href{https://github.com/sqlalchemy/sqlalchemy}{github.com/sqlalchemy/sqlalchemy}}
+\begin{itemize}\small
+  \item \textbf{2 merged commits}: raised a clear error for PostgreSQL ENUM/DOMAIN types using a reserved name (\href{https://github.com/sqlalchemy/sqlalchemy/commit/555a18ac02}{555a18ac}, PR \#12822) and expanded inline PEP 484 type coverage in \texttt{sqlalchemy.sql.base} (\href{https://github.com/sqlalchemy/sqlalchemy/commit/e47d652653}{e47d6526}, PR \#12707) --- merged via SQLAlchemy's Gerrit workflow and released in \textbf{2.1.0b1}
+\end{itemize}
+
+% ═══ EDUCATION ═══════════════════════════════════════════
+\section{EDUCATION}
+
+\edline{Dr. A.P.J. Abdul Kalam Technical University}{Sep 2024 -- Jul 2026}{Master of Technology (M.Tech), Computer Science \& Engineering $\cdot$ CGPA: 8.29/10 $\cdot$ First Division with Honours}{Ghaziabad, India}
+
+\edline{Dr. A.P.J. Abdul Kalam Technical University}{Aug 2020 -- Aug 2024}{Bachelor of Technology (B.Tech), Computer Science \& Engineering $\cdot$ CGPA: 7.89/10 $\cdot$ Grade: A+}{Ghaziabad, India}
+
+% ═══ CERTIFICATIONS ══════════════════════════════════════
+\section{CERTIFICATIONS \& ACHIEVEMENTS}
+\begin{itemize}\small
+  \item \textbf{HackerRank Certified:} Software Engineer $\cdot$ Software Engineer Intern $\cdot$ SQL (Intermediate) $\cdot$ Problem Solving (Intermediate)
+  \item \textbf{IBM:} Python for Data Science \quad $\cdot$ \quad \textbf{Cognitive Class:} SQL and Relational Databases 101
+  \item Published a \textbf{production-ready PyPI package} (FastAPI Tenancy) with full documentation
+  \item SQLAlchemy open source contributor with \textbf{2 merged commits} released in 2.1.0b1
+  \item Achieved \textbf{70\% API response time reduction} and \textbf{35\% production bug reduction} through CI/CD automation
+\end{itemize}
+
+\end{document}
