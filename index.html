@@ -246,7 +246,11 @@
     margin: 0 auto;
     padding: 0 48px;
   }
-  .hero-content { max-width: 900px; }
+  .hero-content {
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: center;
+  }
 
   .hero-prompt {
     font-size: 12px;
@@ -279,6 +283,7 @@
   .hero-badges {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 10px;
     margin-bottom: 40px;
   }
@@ -308,12 +313,15 @@
 
   .hero-cta {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 16px;
   }
 
   .btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     padding: 12px 24px;
     font-family: var(--font-mono);
