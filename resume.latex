@@ -129,13 +129,6 @@ Practices          & Microservices Architecture, System Design, Agile/Scrum, Cod
 
 \vspace{3pt}
 
-\projline{NetBox FTP Plugin --- Enterprise Network Management}{Django, DRF, PostgreSQL, Strawberry GraphQL, Docker}{}
-\begin{itemize}\small
-  \item Production NetBox plugin with 7 core models, full REST + GraphQL APIs, RBAC, SQL injection/CSRF protection, Alembic migrations; complete documentation and GitHub Actions CI/CD
-\end{itemize}
-
-\vspace{3pt}
-
 \projline{SQLAlchemy --- Open Source Contributions}{Python, PostgreSQL, mypy}{\href{https://github.com/sqlalchemy/sqlalchemy}{github.com/sqlalchemy/sqlalchemy}}
 \begin{itemize}\small
   \item \textbf{2 merged commits}: raised a clear error for PostgreSQL ENUM/DOMAIN types using a reserved name (\href{https://github.com/sqlalchemy/sqlalchemy/commit/555a18ac02}{555a18ac}, PR \#12822) and expanded inline PEP 484 type coverage in \texttt{sqlalchemy.sql.base} (\href{https://github.com/sqlalchemy/sqlalchemy/commit/e47d652653}{e47d6526}, PR \#12707) --- merged via SQLAlchemy's Gerrit workflow and released in \textbf{2.1.0b1}
@@ -144,7 +137,7 @@ Practices          & Microservices Architecture, System Design, Agile/Scrum, Cod
 % ═══ EDUCATION ═══════════════════════════════════════════
 \section{EDUCATION}
 
-\edline{Dr. A.P.J. Abdul Kalam Technical University}{Sep 2024 -- Jul 2026}{Master of Technology (M.Tech), Computer Science \& Engineering $\cdot$ CGPA: 8.29/10 $\cdot$ First Division with Honours}{Ghaziabad, India}
+\edline{Dr. A.P.J. Abdul Kalam Technical University}{Sep 2024 -- Jul 2026}{Master of Technology (M.Tech), Computer Science \& Engineering $\cdot$ CGPA: 8.29/10 $\cdot$ Grade: A+ (Hons)}{Ghaziabad, India}
 
 \edline{Dr. A.P.J. Abdul Kalam Technical University}{Aug 2020 -- Aug 2024}{Bachelor of Technology (B.Tech), Computer Science \& Engineering $\cdot$ CGPA: 7.89/10 $\cdot$ Grade: A+}{Ghaziabad, India}
 
