@@ -199,12 +199,15 @@
   .nav-toggle:hover { border-color: var(--green); background: var(--green-dim); }
 
   /* HERO */
+  /* Full-bleed: overrides the 1200px section cap so the blurred glow
+     circles span the viewport instead of being clipped to a centre box. */
   #hero {
     position: relative;
     min-height: 100vh;
     display: flex;
     align-items: center;
     padding: 120px 0 80px;
+    max-width: none;
     z-index: 1;
     overflow: hidden;
   }
