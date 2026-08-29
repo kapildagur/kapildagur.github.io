@@ -883,10 +883,6 @@
   .reveal {
     transition: opacity 0.7s ease, transform 0.7s ease;
   }
-  .reveal.visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
 
   /* Entrance animations are gated on the `js` class set in <head>, so if
      scripting is off or fails the whole page renders fully visible. */
@@ -895,7 +891,8 @@
   .js .hero-role   { opacity: 0; animation: fadeUp 0.7s ease 0.6s forwards; }
   .js .hero-badges { opacity: 0; animation: fadeUp 0.7s ease 0.8s forwards; }
   .js .hero-cta    { opacity: 0; animation: fadeUp 0.7s ease 1s   forwards; }
-  .js .reveal      { opacity: 0; transform: translateY(30px); }
+  .js .reveal { opacity: 0; transform: translateY(30px); }
+  .js .reveal.visible { opacity: 1; transform: translateY(0); }
 
   /* Scrollbar */
   ::-webkit-scrollbar { width: 4px; }
@@ -957,7 +954,7 @@
     body::before { display: none; }
     .cursor, .cursor-ring { display: none; }
     html.cursor-on body { cursor: auto; }
-    .js .reveal { opacity: 1; transform: none; }
+    .js .reveal, .js .reveal.visible { opacity: 1; transform: none; }
     .js .hero-prompt, .js .hero-name, .js .hero-role,
     .js .hero-badges, .js .hero-cta { opacity: 1; animation: none; }
     .metric-card:hover, .project-card:hover, .contrib-card:hover,
