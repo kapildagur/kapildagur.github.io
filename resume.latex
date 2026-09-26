@@ -96,9 +96,9 @@ Fintech            & RBI Account Aggregator, consent management, FIU/FIP and TSP
 
 \jobtitle{Python Backend Developer}{Apr 2024 -- Apr 2026}{In2IT Technologies Pvt. Ltd. $\cdot$ Full-time}{Noida, India}
 \begin{itemize}\small
-  \item Built REST APIs for \textbf{iProvision}, a network management platform (SD-WAN, SNMP monitoring) used by \textbf{10,000+ concurrent users}; its alerting and device configuration features cut network downtime by \textbf{40\%}
+  \item Built REST APIs for \textbf{iProvision}, a network inventory and device management platform that runs device operations over SNMP and NETCONF/RESTCONF, used by \textbf{10,000+ concurrent users}; helped cut network downtime by \textbf{40\%}
   \item Brought API response time from \textbf{800 ms to 250 ms} with Redis caching, Celery task queues and PostgreSQL query tuning, and scaled request handling \textbf{3x}
-  \item Built backend services for \textbf{iDashboard}, an in-house replacement for Apache Superset with live data streaming, and \textbf{ProWatch}, an enterprise access control system with real-time event pipelines
+  \item Built backend services for \textbf{iDashboard}, a tool for building custom dashboards and charts, and \textbf{ProWatch}, an employee performance monitoring app that also manages employees' systems
   \item Set up CI/CD with Docker, GitHub Actions and Jenkins with 85\%+ test coverage, cutting production bugs by \textbf{35\%} and deployment time by \textbf{60\%}
 \end{itemize}
 
@@ -106,9 +106,7 @@ Fintech            & RBI Account Aggregator, consent management, FIU/FIP and TSP
 
 \jobtitle{Backend Developer (Node.js / Python)}{Jun 2023 -- Dec 2023}{CodeQuotient Pvt. Ltd. $\cdot$ Apprenticeship}{Remote}
 \begin{itemize}\small
-  \item Built REST APIs with \textbf{Node.js, Express.js and Django REST Framework}; raised throughput by \textbf{25\%} with async processing and response caching
-  \item Cut average PostgreSQL query time by \textbf{40\%} with indexing and connection pooling, and added ELK-based monitoring
-  \item Helped set up code reviews and supported 3 newer developers on API design and testing
+  \item Built REST APIs for CodeQuotient's education platform using \textbf{Node.js, Express.js and Django REST Framework}
 \end{itemize}
 
 % ═══ PROJECTS ════════════════════════════════════════════
