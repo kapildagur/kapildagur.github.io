@@ -66,7 +66,7 @@
 
 % ═══ SUMMARY ══════════════════════════════════════════════
 \section{SUMMARY}
-{\small Backend engineer with 3 years of experience building Python services with \textbf{Django and FastAPI}. Currently working on \textbf{RBI Account Aggregator} systems (consent, data vault, multi-AA integration) for NBFC lenders. Author of \textbf{fastapi-tenancy} on PyPI and a contributor to \textbf{SQLAlchemy}.}
+{\small Backend engineer with 3 years of experience building Python services with \textbf{Django and FastAPI}. Currently working on \textbf{RBI Account Aggregator} systems (consent, data vault, multi-AA integration) for NBFC lenders. Author of \textbf{fastapi-tenancy} and \textbf{fastapi-locale} on PyPI, and a contributor to \textbf{SQLAlchemy}.}
 
 % ═══ SKILLS ═══════════════════════════════════════════════
 \section{SKILLS}
@@ -83,7 +83,7 @@ Fintech            & RBI Account Aggregator, consent management, FIU/FIP and TSP
 % ═══ EXPERIENCE ═══════════════════════════════════════════
 \section{EXPERIENCE}
 
-\jobtitle{Software Engineer}{Apr 2026 -- Present}{SurePass Technologies Pvt. Ltd. $\cdot$ Full-time}{Delhi, India}
+\jobtitle{Software Engineer}{May 2026 -- Present}{SurePass Technologies Pvt. Ltd. $\cdot$ Full-time}{Delhi, India}
 \begin{itemize}\small
   \item Build backend services for \textbf{finpass.ai}, SurePass's Account Aggregator business, which serves NBFC lenders
   \item Built the \textbf{consent management system} for the AA flow: creation, approval, revocation and expiry, following the RBI AA framework
@@ -114,8 +114,14 @@ Fintech            & RBI Account Aggregator, consent management, FIU/FIP and TSP
 
 \projline{fastapi-tenancy (author, maintainer)}{FastAPI, SQLAlchemy, Alembic, Redis, JWT}{Jan 2026 -- Present \quad \href{https://github.com/fastapi-extensions/fastapi-tenancy}{github.com/fastapi-extensions/fastapi-tenancy} \quad \href{https://pypi.org/project/fastapi-tenancy/}{pypi.org/project/fastapi-tenancy}}
 \begin{itemize}\small
-  \item Multi-tenancy library for FastAPI with \textbf{4 isolation strategies}: schema per tenant, database per tenant, PostgreSQL row-level security, and hybrid
-  \item Fully async (AsyncSession, contextvars); works with PostgreSQL, MySQL, SQLite and SQL Server; \textbf{90\%+ test coverage}, docs on Read the Docs
+  \item Multi-tenancy for FastAPI with \textbf{4 isolation strategies} (schema, database, row-level security, hybrid); fully async; PostgreSQL, MySQL, SQLite and SQL Server; \textbf{90\%+ test coverage}
+\end{itemize}
+
+\vspace{3pt}
+
+\projline{fastapi-locale (author, maintainer)}{FastAPI, Pydantic, Babel, gettext}{Sep 2026 -- Present \quad \href{https://github.com/fastapi-extensions/fastapi-locale}{github.com/fastapi-extensions/fastapi-locale} \quad \href{https://pypi.org/project/fastapi-locale/}{pypi.org/project/fastapi-locale}}
+\begin{itemize}\small
+  \item Internationalization for FastAPI on gettext catalogs: per-request locale, localized 422 validation errors with plural forms, and a CLI that checks catalogs in CI
 \end{itemize}
 
 \vspace{3pt}
