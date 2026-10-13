@@ -112,7 +112,7 @@ Fintech            & RBI Account Aggregator, consent management, FIU/FIP and TSP
 % ═══ PROJECTS ════════════════════════════════════════════
 \section{OPEN SOURCE}
 
-\projline{fastapi-tenancy (author, maintainer)}{FastAPI, SQLAlchemy, Alembic, Redis, JWT}{Jan 2026 -- Present \quad \href{https://github.com/fastapi-extensions/fastapi-tenancy}{github.com/fastapi-extensions/fastapi-tenancy} \quad \href{https://pypi.org/project/fastapi-tenancy/}{pypi.org/project/fastapi-tenancy}}
+\projline{fastapi-tenancy (author, maintainer)}{FastAPI, SQLAlchemy, Alembic, Redis, JWT}{Aug 2025 -- Present \quad \href{https://github.com/fastapi-extensions/fastapi-tenancy}{github.com/fastapi-extensions/fastapi-tenancy} \quad \href{https://pypi.org/project/fastapi-tenancy/}{pypi.org/project/fastapi-tenancy}}
 \begin{itemize}\small
   \item Multi-tenancy for FastAPI with \textbf{4 isolation strategies} (schema, database, row-level security, hybrid); fully async; PostgreSQL, MySQL, SQLite and SQL Server; \textbf{90\%+ test coverage}
 \end{itemize}
