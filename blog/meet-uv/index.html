@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meet uv: one tool for Python packages, versions and projects | Kapil Dagur</title>
+<meta name="description" content="What uv does and how to adopt it: the pip interface, projects and the universal lockfile, Python versions, PEP 723 scripts, uvx, Docker and CI, and migrating from pip or Poetry.">
+<meta name="author" content="Kapil Dagur">
+<link rel="canonical" href="https://kapildagur.github.io/blog/meet-uv/">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kapildagur.github.io/blog/meet-uv/">
+<meta property="og:title" content="Meet uv: one tool for Python packages, versions and projects">
+<meta property="og:description" content="A guide to uv, Astral's Rust-based tool for Python packages, versions and projects, from the pip interface to Docker and CI.">
+<meta property="og:image" content="https://github.com/kapildagur.png">
+<meta property="article:published_time" content="2026-02-24">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23080c10'/%3E%3Cg fill='none' stroke='%2300e6a0' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 7c-3 0-4 1.5-4 4v5c0 2-1 3-3 3c2 0 3 1 3 3v5c0 2.5 1 4 4 4'/%3E%3Cpath d='M30 7c3 0 4 1.5 4 4v5c0 2 1 3 3 3c-2 0-3 1-3 3v5c0 2.5-1 4-4 4'/%3E%3C/g%3E%3Ctext x='20' y='25' text-anchor='middle' font-family='sans-serif' font-weight='800' font-size='12' fill='%23e2e8f0'%3EKD%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../blog.css?v=9">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<nav class="site-nav" aria-label="Site">
+  <a class="logo" href="../../" aria-label="Kapil Dagur, home"><svg class="logo-mark" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true" focusable="false"><g fill="none" stroke="#00e6a0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6c-3 0-4 1.5-4 4v5c0 2-1 3-3 3c2 0 3 1 3 3v5c0 2.5 1 4 4 4" transform="translate(1 1)"/><path d="M31 6c3 0 4 1.5 4 4v5c0 2 1 3 3 3c-2 0-3 1-3 3v5c0 2.5-1 4-4 4" transform="translate(-1 1)"/></g><text x="20" y="24.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="11" fill="#e2e8f0">KD</text></svg></a>
+  <ul>
+    <li><a href="../../">Home</a></li>
+    <li><a href="../" aria-current="page">Blog</a></li>
+  </ul>
+</nav>
+
+<main id="main">
+<article>
+  <p class="post-meta">24 Feb 2026 · 10 min read · Python, Tooling</p>
+  <h1>Meet uv: one tool for Python packages, versions and projects</h1>
+  <p class="lede">One Rust binary that covers the jobs of pip, pyenv, virtualenv, pipx and Poetry, and that you can adopt one command at a time.</p>
+  <p class="post-meta">Originally published on <a href="https://kapildagur.medium.com/meet-uv-the-python-tool-that-makes-you-wonder-why-you-ever-waited-dc0d91dd10bf">Medium</a>; revised for this site.</p>
+
+  <p>You know the feeling. You run <code>pip install -r requirements.txt</code> and wait. You check your phone, make a coffee, come back, and find a dependency conflict waiting for you.</p>
+
+  <p>This is not a post against pip. pip has served the Python community well for many years, and it is still the standard installer. The problem is the toolbox that has grown around it: pip to install, virtualenv to isolate, pyenv for Python versions, pipx for command-line tools, Poetry for project management. That is five tools with five command-line interfaces to run one project.</p>
+
+  <p>uv asks a simple question: what if one tool did all of that, and did it quickly? Astral reports that uv is <a href="https://github.com/astral-sh/uv/blob/main/BENCHMARKS.md">10 to 100 times faster than pip</a>. Let's look at what it does.</p>
+
+  <h2 id="what">What uv is</h2>
+
+  <p>uv is a Python package and project manager built by <a href="https://astral.sh/">Astral</a>, the team behind the Ruff linter. It is written in Rust, ships as a single binary, and the standalone installer does not need Python on the machine.</p>
+
+  <p>Here is what it replaces:</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>What you used before</th><th>What uv offers instead</th></tr></thead>
+    <tbody>
+      <tr><td>pip</td><td><code>uv pip</code></td></tr>
+      <tr><td>virtualenv, venv</td><td><code>uv venv</code></td></tr>
+      <tr><td>pip-tools</td><td><code>uv pip compile</code>, <code>uv pip sync</code></td></tr>
+      <tr><td>pyenv</td><td><code>uv python</code></td></tr>
+      <tr><td>pipx</td><td><code>uv tool</code>, <code>uvx</code></td></tr>
+      <tr><td>Poetry, PDM</td><td><code>uv init</code>, <code>uv add</code>, <code>uv lock</code>, <code>uv sync</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>You do not have to adopt all of it at once. Start with the pip interface and move further when you are ready.</p>
+
+  <h2 id="install">Installing uv</h2>
+
+<pre><code class="language-bash"># macOS and Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh</code></pre>
+
+<pre><code class="language-bash"># Windows (PowerShell)
+powershell -ExecutionPolicy ByPass `
+  -c "irm https://astral.sh/uv/install.ps1 | iex"</code></pre>
+
+<pre><code class="language-bash"># If you already have Python, from PyPI
+pip install uv</code></pre>
+
+  <p>That is all. There is one binary and nothing else to configure.</p>
+
+  <h2 id="pip">Start with a faster pip</h2>
+
+  <p>If you want no change to your workflow, this is the place to start:</p>
+
+<pre><code class="language-bash">uv venv
+uv pip install requests
+uv pip install -r requirements.txt
+uv pip uninstall requests
+uv pip freeze</code></pre>
+
+  <p>The commands look familiar on purpose. Astral describes the pip interface as a drop-in replacement for common pip and pip-tools workflows. It is not an exact clone, and the <a href="https://docs.astral.sh/uv/pip/compatibility/">compatibility page</a> lists the differences. The one you will meet first: uv installs into a virtual environment by default. It uses the active environment, or a <code>.venv</code> in the current or a parent directory. That is why the example starts with <code>uv venv</code>. To install into the system Python instead, pass <code>--system</code>.</p>
+
+  <p>If you want to go all in, you can alias it:</p>
+
+<pre><code class="language-bash">alias pip="uv pip"</code></pre>
+
+  <p>With that one line, you are using uv.</p>
+
+  <h2 id="lockfile">A lockfile that covers every platform</h2>
+
+  <p>This is where uv moves past plain pip. When you use uv to manage a project, which the next section covers, it writes a <code>uv.lock</code> file. The lockfile records your whole dependency tree: not only the packages you declared, but everything they depend on, pinned to exact versions. The uv documentation calls it a universal, or cross-platform, lockfile: one file covers different operating systems, CPU architectures and Python versions. You commit it to version control.</p>
+
+  <p>In practice this means:</p>
+
+  <ul>
+    <li>A teammate clones the repository, runs <code>uv sync</code>, and gets the same versions you have.</li>
+    <li>CI installs the same versions on every run.</li>
+    <li>"It works on my machine" becomes a much rarer conversation.</li>
+  </ul>
+
+  <h2 id="projects">Project management</h2>
+
+  <p>Let's create a project from scratch.</p>
+
+<pre><code class="language-bash">uv init my-cool-app
+cd my-cool-app</code></pre>
+
+  <p><code>uv init</code> creates a <code>pyproject.toml</code>, a <code>.python-version</code> file, a README and some starter code, and initialises a Git repository. It does not create the virtual environment or the lockfile yet. uv creates <code>.venv</code> and <code>uv.lock</code> the first time you run a project command such as <code>uv add</code>, <code>uv run</code>, <code>uv sync</code> or <code>uv lock</code>.</p>
+
+  <p>To add dependencies:</p>
+
+<pre><code class="language-bash">uv add fastapi uvicorn      # runtime dependencies
+uv add --dev pytest httpx   # the "dev" dependency group
+uv add --group lint ruff    # a custom dependency group</code></pre>
+
+  <p><code>--dev</code> is shorthand for <code>--group dev</code>. Dependency groups are stored in the standard <code>[dependency-groups]</code> table of <code>pyproject.toml</code> and are not included in the metadata of a package you publish.</p>
+
+  <p>To run your code:</p>
+
+<pre><code class="language-bash">uv run uvicorn main:app --reload
+uv run pytest</code></pre>
+
+  <p>Before every <code>uv run</code>, uv checks that the lockfile matches <code>pyproject.toml</code> and that the environment matches the lockfile, and fixes either if it does not. You no longer need to remember to activate a virtual environment.</p>
+
+  <p>Onboarding a teammate looks like this:</p>
+
+<pre><code class="language-bash">git clone &lt;your-repo-url&gt;
+cd your-repo
+uv sync                  # the whole setup
+uv run python main.py</code></pre>
+
+  <p>One command takes you from a fresh clone to a working environment that matches the lockfile.</p>
+
+  <h2 id="python">Managing Python versions</h2>
+
+  <p>uv also installs and manages Python itself, which covers most of what I used pyenv for:</p>
+
+<pre><code class="language-bash">uv python install 3.12
+uv python install 3.11 3.12 3.13   # several at once
+uv python list                     # installed and available versions
+uv python list --only-installed    # installed versions only
+uv python pin 3.12                 # write .python-version</code></pre>
+
+  <p>If a project needs a Python version you do not have, uv does not stop to ask: by default it downloads the version and carries on. If you would rather control that, set <code>python-downloads</code> to <code>manual</code>, and uv then downloads Python only when you run <code>uv python install</code>. Removing that kind of friction adds up over a career.</p>
+
+  <h2 id="scripts">Self-contained scripts</h2>
+
+  <p>This one surprised me the first time I saw it. <a href="https://peps.python.org/pep-0723/">PEP 723</a> lets a script declare its own dependencies in a comment block at the top of the file:</p>
+
+<pre><code class="language-python"># /// script
+# requires-python = "&gt;=3.11"
+# dependencies = ["requests", "rich"]
+# ///
+
+import requests
+from rich import print
+
+data = requests.get("https://api.github.com").json()
+print(data)</code></pre>
+
+  <p>Run it with:</p>
+
+<pre><code class="language-bash">uv run my_script.py</code></pre>
+
+  <p>uv reads the inline metadata, finds or downloads a matching Python, builds an isolated environment with the listed dependencies and runs the script in it. There is no requirements file and no virtual environment to set up: you share one file, and anyone with uv can run it. It suits data scripts, automation tasks and small utilities.</p>
+
+  <p>You do not have to write the block by hand. <code>uv init --script my_script.py</code> creates a script with an empty block, and <code>uv add --script my_script.py requests rich</code> adds dependencies to it.</p>
+
+  <h2 id="tools">Command-line tools, the pipx way</h2>
+
+<pre><code class="language-bash"># Install a tool and put its commands on your PATH
+uv tool install ruff
+uv tool install black
+
+# Run a tool once without installing it
+uvx ruff check .
+uvx black --check .
+
+# Run a specific version
+uvx ruff@0.6.0 check .</code></pre>
+
+  <p><code>uvx</code> is an alias for <code>uv tool run</code>, and it runs the tool in a temporary, isolated environment. It is one of the commands I use most. If you need a formatter once, there is no reason to install it into your project: run it with <code>uvx</code>.</p>
+
+  <h2 id="speed">How fast is fast</h2>
+
+  <p>These are Astral's own figures, so treat them as a starting point and measure on your own projects:</p>
+
+  <ul>
+    <li>The uv README describes uv as <a href="https://github.com/astral-sh/uv/blob/main/BENCHMARKS.md">10 to 100 times faster than pip</a>, with the benchmark method published in the repository.</li>
+    <li>In the <a href="https://astral.sh/blog/uv">launch post</a> of February 2024, Astral reported uv as 8 to 10 times faster than pip and pip-tools without a cache, and 80 to 115 times faster with a warm cache.</li>
+    <li>The same post reported virtual environment creation as about 80 times faster than <code>python -m venv</code> and 7 times faster than virtualenv.</li>
+  </ul>
+
+  <p>The warm cache is where it shows most. uv keeps a global cache, so once a package has been downloaded and built, other projects reuse it instead of fetching it again. Astral says uv uses copy-on-write and hardlinks on file systems that support them, which keeps the disk cost of many environments low. For that to work, the cache has to be on the same file system as your environments; otherwise uv falls back to copying.</p>
+
+  <h2 id="compare">How it compares with other tools</h2>
+
+  <p><strong>pip.</strong> For the same operations, <code>uv pip</code> is faster, and the project commands add a lockfile on top. pip remains the standard installer and is the right choice where you cannot add another tool, but for daily development <code>uv pip</code> is an easy upgrade.</p>
+
+  <p><strong>Poetry.</strong> Poetry is mature and well liked, and uv's project workflow will feel familiar to its users. Since Poetry 2.0, released in January 2025, both tools read the standard <code>[project]</code> table in <code>pyproject.toml</code>. The practical differences are speed, and that uv also installs Python versions and runs command-line tools, so one binary covers more of the workflow.</p>
+
+  <p><strong>PDM.</strong> PDM also uses the standard project metadata and supports dependency groups. uv covers more ground, with Python version management and the pipx-style tool commands. PDM is a good tool and still maintained.</p>
+
+  <p><strong>Conda.</strong> Conda solves a different problem: it manages packages that are not Python at all, such as compiled system libraries and CUDA toolkits. If your project uses only packages from PyPI, uv is the better fit. If you depend on Conda's binary packages, keep using Conda or its faster drop-in replacement, Mamba.</p>
+
+  <p><strong>pyenv.</strong> The <code>uv python</code> commands cover the everyday pyenv tasks: install a version, list versions, pin a project. For most projects you can stop using pyenv.</p>
+
+  <h2 id="docker-ci">Docker and CI</h2>
+
+<pre><code class="language-dockerfile"># Dockerfile
+FROM python:3.12-slim
+COPY --from=ghcr.io/astral-sh/uv:0.10.5 /uv /uvx /bin/
+WORKDIR /app
+
+# Install dependencies first, so this layer is cached
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-dev --no-install-project
+
+# Then add the code and install the project itself
+COPY . .
+RUN uv sync --locked --no-dev</code></pre>
+
+  <p>The uv documentation recommends pinning a specific uv version in the image tag rather than using <code>latest</code>. Splitting the sync in two keeps the dependency layer cached while your code changes: <code>--no-install-project</code> installs the dependencies but not the project itself.</p>
+
+<pre><code class="language-yaml"># GitHub Actions
+- uses: astral-sh/setup-uv@v7
+- run: uv sync --locked
+- run: uv run pytest</code></pre>
+
+  <p>Two flags matter here. <code>--locked</code> asserts that <code>uv.lock</code> is up to date with <code>pyproject.toml</code> and fails if it is not, which is what you want in CI: a stale lockfile becomes a red build. <code>--frozen</code> installs from <code>uv.lock</code> as it is, without checking it against <code>pyproject.toml</code>. It is useful when <code>pyproject.toml</code> is not available yet, as in some Docker layers, but it will not catch a lockfile someone forgot to update.</p>
+
+  <h2 id="migration">Migrating</h2>
+
+  <h3>From pip and requirements.txt</h3>
+
+<pre><code class="language-bash">uv init
+uv add -r requirements.txt</code></pre>
+
+  <p><code>uv add</code> reads the requirements file, adds each entry to <code>pyproject.toml</code> and writes <code>uv.lock</code>, so there is no separate lock step. If you use pip-tools, with direct dependencies in <code>requirements.in</code> and pinned versions in <code>requirements.txt</code>, keep your current versions by passing the pinned file as constraints:</p>
+
+<pre><code class="language-bash">uv add -r requirements.in -c requirements.txt</code></pre>
+
+  <h3>From Poetry</h3>
+
+  <ul>
+    <li>Most of <code>pyproject.toml</code> carries over.</li>
+    <li>Move dependencies from <code>[tool.poetry.dependencies]</code> to the <code>dependencies</code> list in the <code>[project]</code> table, and development dependencies to <code>[dependency-groups]</code>.</li>
+    <li>Rewrite Poetry's own constraint syntax as standard specifiers on the way: <code>^2.31</code> becomes <code>&gt;=2.31,&lt;3</code>.</li>
+    <li>Run <code>uv lock</code> to create <code>uv.lock</code>, then remove <code>poetry.lock</code>.</li>
+  </ul>
+
+  <h3>The lowest-risk path</h3>
+
+<pre><code class="language-bash">alias pip="uv pip"</code></pre>
+
+  <p>Keep your virtual environments and requirements files and change nothing else. Remember that <code>uv pip</code> expects a virtual environment, so add <code>--system</code> anywhere you used to install into the system Python.</p>
+
+  <h2 id="production">Is it ready for production?</h2>
+
+  <p>Yes. On the day this post was first published, the current release was uv 0.10.5, in the 0.10 series that began on 5 February 2026. The version number is below 1.0, but Astral describes uv as stable software that is widely used in production, and it publishes a <a href="https://docs.astral.sh/uv/reference/policies/versioning/">versioning policy</a>: breaking changes go only into minor releases, and the <code>uv.lock</code> format is part of the public API. Editor support is there too: PyCharm added uv support in <a href="https://blog.jetbrains.com/pycharm/2025/01/pycharm-2024-3-2/">version 2024.3.2</a>.</p>
+
+  <h2 id="next">Where to go next</h2>
+
+  <ul>
+    <li><a href="https://docs.astral.sh/uv/">The uv documentation</a> is clear and well organised.</li>
+    <li><a href="https://github.com/astral-sh/uv">The GitHub repository</a>: the release notes double as a detailed changelog.</li>
+    <li><a href="https://realpython.com/python-uv/">Managing Python Projects With uv: An All-in-One Solution</a> on Real Python is a thorough tutorial.</li>
+    <li><a href="https://astral.sh/blog/uv-unified-python-packaging">uv: Unified Python packaging</a> on Astral's blog explains the design behind the project commands.</li>
+  </ul>
+
+  <h2 id="close">Final thought</h2>
+
+  <p>uv will not make you a better programmer. What it does is remove friction: the small, slow, repetitive steps that add up to real frustration over a long project. You get faster installs, reproducible environments, one tool instead of five, and onboarding that takes one command.</p>
+
+  <p>pip laid the foundation. uv builds on what the ecosystem has learned since.</p>
+
+  <p>Give it ten minutes. Install it, run <code>uvx ruff check .</code> on your codebase and watch the result come back. Then try <code>uv sync</code> on your next project. I would be surprised if you went back.</p>
+
+  <h2 id="sources">Sources</h2>
+  <ul class="sources">
+    <li>Astral, <a href="https://docs.astral.sh/uv/">uv documentation</a>: <a href="https://docs.astral.sh/uv/guides/projects/">working on projects</a>, <a href="https://docs.astral.sh/uv/concepts/projects/layout/">project structure and the lockfile</a>, <a href="https://docs.astral.sh/uv/concepts/python-versions/">Python versions</a>, <a href="https://docs.astral.sh/uv/guides/scripts/">running scripts</a>, <a href="https://docs.astral.sh/uv/guides/tools/">using tools</a></li>
+    <li>Astral, uv documentation: <a href="https://docs.astral.sh/uv/pip/environments/">using Python environments</a>, <a href="https://docs.astral.sh/uv/pip/compatibility/">compatibility with pip</a>, <a href="https://docs.astral.sh/uv/guides/migration/pip-to-project/">migrating from pip to a uv project</a>, <a href="https://docs.astral.sh/uv/concepts/cache/">caching</a></li>
+    <li>Astral, uv documentation: <a href="https://docs.astral.sh/uv/guides/integration/docker/">using uv in Docker</a>, <a href="https://docs.astral.sh/uv/guides/integration/github/">using uv in GitHub Actions</a>, <a href="https://docs.astral.sh/uv/reference/cli/">command reference</a>, <a href="https://docs.astral.sh/uv/reference/policies/versioning/">versioning policy</a></li>
+    <li>Astral, <a href="https://github.com/astral-sh/uv">uv on GitHub</a>, including <a href="https://github.com/astral-sh/uv/blob/main/BENCHMARKS.md">BENCHMARKS.md</a> and the <a href="https://github.com/astral-sh/uv/releases">release history</a>; <a href="https://github.com/astral-sh/setup-uv/releases">setup-uv releases</a></li>
+    <li>Astral blog, <a href="https://astral.sh/blog/uv">uv: Python packaging in Rust</a> (15 February 2024) and <a href="https://astral.sh/blog/uv-unified-python-packaging">uv: Unified Python packaging</a> (20 August 2024)</li>
+    <li>Python Enhancement Proposals, <a href="https://peps.python.org/pep-0723/">PEP 723: Inline script metadata</a></li>
+    <li>Poetry, <a href="https://python-poetry.org/blog/announcing-poetry-2.0.0/">Announcing Poetry 2.0.0</a> (5 January 2025); JetBrains, <a href="https://blog.jetbrains.com/pycharm/2025/01/pycharm-2024-3-2/">PyCharm 2024.3.2</a>; <a href="https://mamba.readthedocs.io/en/latest/">Mamba documentation</a></li>
+  </ul>
+</article>
+</main>
+
+<footer>
+  <p>Kapil Dagur · <a href="../../">kapildagur.github.io</a> · <a href="https://github.com/kapildagur">GitHub</a> · <a href="https://linkedin.com/in/kapildagur">LinkedIn</a></p>
+</footer>
+<script src="../assets/highlight/highlight.min.js" defer></script>
+<script src="../assets/highlight/dockerfile.min.js" defer></script>
+<script src="../assets/highlight/init.js" defer></script>
+</body>
+</html>

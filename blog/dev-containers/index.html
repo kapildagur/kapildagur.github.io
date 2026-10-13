@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dev Containers: your entire dev environment in a single JSON file | Kapil Dagur</title>
+<meta name="description" content="A practical guide to Dev Containers: the devcontainer.json file, the three ways to define a container, Features, lifecycle hooks, the Dev Container CLI, prebuilt images and Codespaces.">
+<meta name="author" content="Kapil Dagur">
+<link rel="canonical" href="https://kapildagur.github.io/blog/dev-containers/">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kapildagur.github.io/blog/dev-containers/">
+<meta property="og:title" content="Dev Containers: your entire dev environment in a single JSON file">
+<meta property="og:description" content="How devcontainer.json, Features and lifecycle hooks give every developer on a team the same environment, checked against the Dev Container specification.">
+<meta property="og:image" content="https://github.com/kapildagur.png">
+<meta property="article:published_time" content="2026-04-15">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23080c10'/%3E%3Cg fill='none' stroke='%2300e6a0' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 7c-3 0-4 1.5-4 4v5c0 2-1 3-3 3c2 0 3 1 3 3v5c0 2.5 1 4 4 4'/%3E%3Cpath d='M30 7c3 0 4 1.5 4 4v5c0 2 1 3 3 3c-2 0-3 1-3 3v5c0 2.5-1 4-4 4'/%3E%3C/g%3E%3Ctext x='20' y='25' text-anchor='middle' font-family='sans-serif' font-weight='800' font-size='12' fill='%23e2e8f0'%3EKD%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../blog.css?v=9">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<nav class="site-nav" aria-label="Site">
+  <a class="logo" href="../../" aria-label="Kapil Dagur, home"><svg class="logo-mark" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true" focusable="false"><g fill="none" stroke="#00e6a0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6c-3 0-4 1.5-4 4v5c0 2-1 3-3 3c2 0 3 1 3 3v5c0 2.5 1 4 4 4" transform="translate(1 1)"/><path d="M31 6c3 0 4 1.5 4 4v5c0 2 1 3 3 3c-2 0-3 1-3 3v5c0 2.5-1 4-4 4" transform="translate(-1 1)"/></g><text x="20" y="24.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="11" fill="#e2e8f0">KD</text></svg></a>
+  <ul>
+    <li><a href="../../">Home</a></li>
+    <li><a href="../" aria-current="page">Blog</a></li>
+  </ul>
+</nav>
+
+<main id="main">
+<article>
+  <p class="post-meta">15 Apr 2026 · 20 min read · Developer tools, Docker</p>
+  <h1>Dev Containers: your entire dev environment in a single JSON file</h1>
+  <p class="lede">No more "works on my machine" and no more two-hour onboarding. One configuration file, one container, and every developer on the team in the same environment.</p>
+  <p class="post-meta">Originally published on <a href="https://kapildagur.medium.com/dev-containers-devcontainers-your-entire-dev-environment-in-a-single-json-file-ec2a982e2f9f">Medium</a>; revised for this site.</p>
+
+  <p>You know the scene. A new teammate joins and spends the first day fighting the environment: the wrong Python version, a missing system library, two projects that want different Node versions. By the evening they have written no code.</p>
+
+  <p>Or this one. You fix a bug locally, push it, and CI fails because the build server has a slightly different version of some dependency. An hour later you find a <code>gcc</code> version mismatch. Nothing you wrote was wrong.</p>
+
+  <p>Both problems have the same cause: the development environment lives in your head and on your laptop, not in the repository.</p>
+
+  <p>Dev Containers fix that. They are a specification, an ecosystem of tools and a workflow that describe the whole development environment (tools, runtimes, editor extensions, settings) in a <code>devcontainer.json</code> file that sits next to your code. Anyone with Docker and VS Code, or GitHub Codespaces, or another supporting tool, gets the same environment without manual setup.</p>
+
+  <p>This post goes through each layer of how that works.</p>
+
+  <h2 id="what">What a dev container is</h2>
+
+  <p>The project's own site puts it in one line: "A development container (or dev container for short) allows you to use a container as a full-featured development environment." The specification adds that a dev container "defines an environment in which you develop your application before you are ready to deploy."</p>
+
+  <p>The important word is full-featured. A dev container is more than a Docker image with a language runtime. It also carries your editor extensions, linter settings, a database next to the app, environment variables and the scripts that finish the setup. It is a reproducible description of the whole development setup.</p>
+
+  <h2 id="architecture">How the pieces fit together</h2>
+
+  <p>Before any configuration, it helps to have the picture in mind. Everything later in this post fits into it.</p>
+
+<pre><code class="language-plaintext">+-------------------------------------------------------------+
+| Your machine (host)                                         |
+|                                                             |
+|  +-------------------------------------------------------+  |
+|  | Docker or another container runtime                   |  |
+|  |                                                       |  |
+|  |  +-------------------------------------------------+  |  |
+|  |  | Dev container                                   |  |  |
+|  |  |   Base image (Ubuntu, Debian, ...)              |  |  |
+|  |  |   Features (Python, Node, Docker, git, ...)     |  |  |
+|  |  |   Your source code (bind mounted)               |  |  |
+|  |  |   Lifecycle scripts (postCreate, postStart ...) |  |  |
+|  |  +-------------------------------------------------+  |  |
+|  |                                                       |  |
+|  |  +----------------------+  +-----------------------+  |  |
+|  |  | Postgres container   |  | Redis container       |  |  |
+|  |  | (with Docker Compose)|  | (with Docker Compose) |  |  |
+|  |  +----------------------+  +-----------------------+  |  |
+|  +-------------------------------------------------------+  |
+|                                                             |
+|  +-------------------------------------------------------+  |
+|  | Supporting tool (VS Code, Codespaces, ...)            |  |
+|  |   reads .devcontainer/devcontainer.json               |  |
+|  |   installs extensions inside the container            |  |
+|  +-------------------------------------------------------+  |
++-------------------------------------------------------------+</code></pre>
+
+  <p>Three things follow from this picture:</p>
+
+  <ul>
+    <li><strong>Your source code stays on the host.</strong> It is bind-mounted into the container, so edits show up at once, and rebuilding the container does not lose your work.</li>
+    <li><strong>Tools run inside the container.</strong> Python, Node, compilers, linters and databases live there. Nothing gets installed on the host.</li>
+    <li><strong>The editor runs on the host and connects to the container.</strong> VS Code's window runs locally, while terminals, the debugger and most extensions run inside the container. UI extensions such as themes stay on the local side.</li>
+  </ul>
+
+  <h2 id="folder">The .devcontainer folder</h2>
+
+  <p>The whole configuration lives in the repository:</p>
+
+<pre><code class="language-plaintext">your-project/
+|-- .devcontainer/
+|   |-- devcontainer.json    # the main configuration file
+|   |-- Dockerfile           # optional, for a custom image
+|   `-- docker-compose.yml   # optional, for several containers
+|-- src/
+|   `-- main.py
+`-- README.md</code></pre>
+
+  <p>Tools that implement the specification look for <code>devcontainer.json</code> in these places, in order of precedence:</p>
+
+  <ol>
+    <li><code>.devcontainer/devcontainer.json</code></li>
+    <li><code>.devcontainer.json</code> in the project root</li>
+    <li><code>.devcontainer/&lt;folder&gt;/devcontainer.json</code>, where <code>&lt;folder&gt;</code> is one level deep. This is how one repository offers several configurations.</li>
+  </ol>
+
+  <p>The file is JSON with comments, so the <code>//</code> comments in the examples below are valid.</p>
+
+  <h2 id="approaches">Three ways to define the container</h2>
+
+  <p>The specification supports three ways to describe the container, from the simplest to the most flexible.</p>
+
+  <h3>1. From an image</h3>
+
+  <p>Point at a prebuilt image. No Dockerfile needed.</p>
+
+<pre><code class="language-json">// .devcontainer/devcontainer.json
+{
+  "name": "Python 3.12",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12"
+}</code></pre>
+
+  <p>Microsoft publishes a set of dev container images under <code>mcr.microsoft.com/devcontainers/</code>: <code>python</code>, <code>javascript-node</code>, <code>go</code>, <code>java</code>, <code>rust</code>, <code>dotnet</code>, <code>base</code> and more. Each comes with common development tools and a non-root user already set up.</p>
+
+  <h3>2. From a Dockerfile</h3>
+
+  <p>Use a Dockerfile when you need system packages or tools that the base image does not have.</p>
+
+<pre><code class="language-json">// .devcontainer/devcontainer.json
+{
+  "name": "My Python App",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "PYTHON_VERSION": "3.12"
+    }
+  },
+  "forwardPorts": [8000]
+}</code></pre>
+
+<pre><code class="language-dockerfile"># .devcontainer/Dockerfile
+ARG PYTHON_VERSION=3.12
+FROM mcr.microsoft.com/devcontainers/python:${PYTHON_VERSION}
+
+# System-level dependencies
+RUN apt-get update &amp;&amp; apt-get install -y \
+    postgresql-client \
+    redis-tools \
+    &amp;&amp; rm -rf /var/lib/apt/lists/*</code></pre>
+
+  <p>The Dockerfile runs while the image is built, before the container starts. Use it for system-level dependencies. For project-level setup such as installing your Python requirements, use the lifecycle scripts described later.</p>
+
+  <h3>3. With Docker Compose</h3>
+
+  <p>Use Docker Compose when the project needs a database, a cache or another service next to the main container.</p>
+
+<pre><code class="language-json">// .devcontainer/devcontainer.json
+{
+  "name": "Django + Postgres",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace"
+}</code></pre>
+
+<pre><code class="language-yaml"># .devcontainer/docker-compose.yml
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity   # keep the container running
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: myapp
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+  redis:
+    image: redis:7-alpine
+
+volumes:
+  postgres-data:</code></pre>
+
+  <p><code>dockerComposeFile</code> and <code>service</code> are both required in this mode: the first names the Compose file, the second names the container your editor connects to. The app, the database and the cache start together. From inside the app container you reach the others by service name, for example <code>db:5432</code>, because Compose puts them on one network. <code>command: sleep infinity</code> is there because the tool does not override the container's command in Compose mode, and without a long-running command the container would exit. Most backend projects end up with this pattern.</p>
+
+  <p>I dropped the top-level <code>version: "3.8"</code> line that older Compose files carry. Current Docker Compose treats it as obsolete and prints a warning when it sees it.</p>
+
+  <h2 id="features">Features: modular tooling</h2>
+
+  <p>Features are one of the most useful parts of dev containers. A Feature is a self-contained, shareable unit of installation code that adds a tool to any base image, a bit like a package for your development environment.</p>
+
+<pre><code class="language-json">{
+  "name": "Full-Stack Dev",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12"
+    },
+    "ghcr.io/devcontainers/features/node:2": {
+      "version": "lts"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:4": {
+      "version": "latest",
+      "moby": true
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  }
+}</code></pre>
+
+  <p>Each Feature is:</p>
+
+  <ul>
+    <li><strong>Self-contained.</strong> It is a folder with at least a <code>devcontainer-feature.json</code> metadata file and an <code>install.sh</code> script.</li>
+    <li><strong>Distributed as an OCI artifact.</strong> Tools pull it from a container registry such as the GitHub Container Registry (<code>ghcr.io</code>).</li>
+    <li><strong>Versioned with semver.</strong> Each release is tagged with its major, minor and full version, so you can pin <code>:1</code>, <code>:1.2</code> or <code>:1.2.3</code>.</li>
+    <li><strong>Composable.</strong> Add as many as you need. They are installed one after another, in an order the tool works out. A Feature can declare <code>dependsOn</code> or <code>installsAfter</code>, and you can force an order with <code>overrideFeatureInstallOrder</code> in <code>devcontainer.json</code>.</li>
+  </ul>
+
+  <p>Major versions move. At the time of this revision the official Node Feature is at <code>:2</code> and Docker-in-Docker is at <code>:4</code>, so check each Feature's page before you copy an old snippet.</p>
+
+  <h3>How Features work inside</h3>
+
+  <p>Every Feature has this shape:</p>
+
+<pre><code class="language-plaintext">my-feature/
+|-- devcontainer-feature.json    # metadata: id, version, options
+`-- install.sh                   # the installation script</code></pre>
+
+<pre><code class="language-json">// devcontainer-feature.json
+{
+  "id": "python",
+  "version": "1.2.3",
+  "name": "Python",
+  "options": {
+    "version": {
+      "type": "string",
+      "default": "os-provided",
+      "description": "Python version to install"
+    }
+  }
+}</code></pre>
+
+  <p>When you add a Feature to <code>devcontainer.json</code>, the tool downloads it from the registry and runs its <code>install.sh</code> as <code>root</code> while it builds the image. The tool is then part of the image and available for the life of the container.</p>
+
+  <h2 id="lifecycle">The lifecycle: what runs when</h2>
+
+  <p>This is the part most people find confusing, so I will be thorough. The specification defines six lifecycle commands. The image, including its Features, is built first. Then they run in this order:</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Command</th><th>Runs on</th><th>When</th></tr></thead>
+    <tbody>
+      <tr><td><code>initializeCommand</code></td><td>Host</td><td>During initialization: when the container is created and again on later starts. It may run more than once in a session. For a cloud service, the "host" is in the cloud.</td></tr>
+      <tr><td><code>onCreateCommand</code></td><td>Container</td><td>First of three setup commands, right after the container starts for the first time. Cloud services may run it while prebuilding, so it usually has no access to user secrets.</td></tr>
+      <tr><td><code>updateContentCommand</code></td><td>Container</td><td>Second setup command, after <code>onCreateCommand</code>. It runs at least once, and cloud services also rerun it to refresh prebuilt containers when the source changes. Only repository and organization secrets are available.</td></tr>
+      <tr><td><code>postCreateCommand</code></td><td>Container</td><td>Last setup command, once the container has been assigned to a user for the first time. This is where user-specific secrets and permissions are available.</td></tr>
+      <tr><td><code>postStartCommand</code></td><td>Container</td><td>Every time the container starts.</td></tr>
+      <tr><td><code>postAttachCommand</code></td><td>Container</td><td>Every time a tool attaches to the container.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Two more rules matter in practice. If one lifecycle command fails, the ones after it do not run: a failing <code>postCreateCommand</code> means <code>postStartCommand</code> is skipped too. And the <code>waitFor</code> property says which command a tool waits for before it connects. It defaults to <code>updateContentCommand</code>, so slow steps in <code>postCreateCommand</code> can finish in the background while you already work.</p>
+
+  <h3>What goes where</h3>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Task</th><th>Best place</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Check a host prerequisite</td><td><code>initializeCommand</code></td><td>Runs on the host, before the container is created</td></tr>
+      <tr><td>Install system packages</td><td>Dockerfile or Features</td><td>Cached in an image layer</td></tr>
+      <tr><td><code>pip install -r requirements.txt</code></td><td><code>updateContentCommand</code> or <code>postCreateCommand</code></td><td>Needs the workspace files</td></tr>
+      <tr><td><code>npm install</code></td><td><code>updateContentCommand</code> or <code>postCreateCommand</code></td><td>Needs the workspace files</td></tr>
+      <tr><td>Database migrations</td><td><code>postCreateCommand</code></td><td>One-time setup</td></tr>
+      <tr><td>Start a dev server</td><td><code>postStartCommand</code></td><td>Has to start again with the container</td></tr>
+      <tr><td>Start background workers</td><td><code>postStartCommand</code></td><td>Every container start</td></tr>
+      <tr><td>Print a welcome message</td><td><code>postAttachCommand</code></td><td>Every session</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Running commands in parallel</h3>
+
+  <p>Every lifecycle command accepts three forms. A string goes through a shell. An array is passed to the operating system without a shell. An object runs each of its entries in parallel:</p>
+
+<pre><code class="language-json">{
+  "postCreateCommand": {
+    "python-deps": "pip install --user -r requirements.txt",
+    "node-deps": "npm install"
+  }
+}</code></pre>
+
+  <p>The two installs above run at the same time, and each must exit successfully for the step to count as successful. Parallel means no ordering, so only put independent commands in one object. A migration that needs the Python packages must not sit next to the install that provides them. For steps in sequence, use <code>&amp;&amp;</code> in a string, a shell script, or an earlier lifecycle command.</p>
+
+  <h2 id="reference">devcontainer.json, property by property</h2>
+
+  <p>Here are the properties you will use most, with examples.</p>
+
+  <h3>What to build</h3>
+
+  <p>Pick exactly one of the three sources from earlier: an image, a build, or a Compose file.</p>
+
+<pre><code class="language-json">{
+  // Human-readable name, shown by the editor
+  "name": "My Python API",
+
+  // Option 1: a prebuilt image
+  "image": "mcr.microsoft.com/devcontainers/python:3.12"
+
+  // Option 2: a Dockerfile, instead of "image"
+  // "build": {
+  //   "dockerfile": "Dockerfile",
+  //   "context": "..",
+  //   "args": { "VARIANT": "3.12-bookworm" }
+  // }
+
+  // Option 3: Docker Compose, instead of "image"
+  // "dockerComposeFile": "docker-compose.yml",
+  // "service": "app"
+}</code></pre>
+
+  <p><code>build.context</code> is relative to <code>devcontainer.json</code>, so <code>".."</code> lets the Dockerfile reach files in the project root, such as <code>requirements.txt</code>.</p>
+
+  <h3>Ports</h3>
+
+<pre><code class="language-json">{
+  // Forward these ports to your machine
+  "forwardPorts": [8000, "db:5432", "redis:6379"],
+
+  // Options per port
+  "portsAttributes": {
+    "8000": {
+      "label": "Application",
+      // notify, openBrowser, openBrowserOnce, openPreview,
+      // silent or ignore
+      "onAutoForward": "notify"
+    },
+    "db:5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    }
+  }
+}</code></pre>
+
+  <p>A plain number forwards a port of the main container. The <code>"host:port"</code> form forwards a port of another Compose service, which is what you want for a database that runs in its own container. <code>onAutoForward</code> defaults to <code>notify</code>.</p>
+
+  <h3>Environment variables</h3>
+
+<pre><code class="language-json">{
+  // Set on the container itself, for every process.
+  // Fixed for the life of the container: rebuild to change.
+  "containerEnv": {
+    "PYTHONPATH": "/workspace/src",
+    "DATABASE_URL": "postgresql://db:5432/devdb"
+  },
+
+  // Set for the tool and its sub-processes, such as
+  // terminals. Can change without a rebuild.
+  "remoteEnv": {
+    "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}",
+    "API_KEY": "${localEnv:MY_API_KEY}"
+  }
+}</code></pre>
+
+  <h3>Mounts</h3>
+
+<pre><code class="language-json">{
+  "mounts": [
+    // A named volume that survives rebuilds
+    {
+      "source": "devcontainer-cache",
+      "target": "/home/vscode/.cache",
+      "type": "volume"
+    },
+    // A folder from the host
+    {
+      "source": "${localWorkspaceFolder}/data",
+      "target": "/workspace/data",
+      "type": "bind"
+    }
+  ]
+}</code></pre>
+
+  <p>Each entry is either an object like the ones above or a string in the format of Docker's <code>--mount</code> flag.</p>
+
+  <h3>Users and the workspace</h3>
+
+<pre><code class="language-json">{
+  // User for the tool, terminals, tasks and debugging
+  "remoteUser": "vscode",
+  // User for everything in the container
+  "containerUser": "vscode",
+
+  // Where the source is mounted, and where the editor opens.
+  // Each of these two needs the other.
+  "workspaceMount":
+    "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace"
+}</code></pre>
+
+  <p><code>remoteUser</code> changes only the user that the tool and its terminals run as. <code>containerUser</code> changes the user for everything in the container. Most of the time <code>remoteUser</code> is enough.</p>
+
+  <h3>Lifecycle scripts</h3>
+
+<pre><code class="language-json">{
+  "initializeCommand": "echo 'Checking prerequisites on the host'",
+
+  "onCreateCommand": "echo 'Container created'",
+
+  "updateContentCommand": "pip install --user -r requirements.txt",
+
+  "postCreateCommand": {
+    "pre-commit": "python -m pre_commit install",
+    "migrate": "python manage.py migrate"
+  },
+
+  "postStartCommand":
+    "nohup python manage.py runserver 0.0.0.0:8000 &gt; /tmp/dev.log 2&gt;&amp;1 &amp;",
+
+  "postAttachCommand": "echo 'Dev container ready.'"
+}</code></pre>
+
+  <p>The requirements are installed in <code>updateContentCommand</code>, which finishes before <code>postCreateCommand</code> starts. That is what lets the two <code>postCreateCommand</code> entries run in parallel: both need the packages, and neither needs the other. The <code>--user</code> flag is there because the Python image installs Python as <code>root</code>, so the non-root <code>vscode</code> user needs either <code>sudo</code> or a user install. The dev server is started with <code>nohup</code> and its output goes to a log file, so it keeps running after the hook returns.</p>
+
+  <h3>Editor customizations</h3>
+
+<pre><code class="language-json">{
+  "customizations": {
+    "vscode": {
+      // Extensions installed inside the container
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg"
+      ],
+      // Settings applied inside the container
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "editor.formatOnSave": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.codeActionsOnSave": {
+            "source.fixAll.ruff": "explicit",
+            "source.organizeImports.ruff": "explicit"
+          }
+        },
+        "mypy-type-checker.importStrategy": "fromEnvironment"
+      }
+    }
+  }
+}</code></pre>
+
+  <p><code>customizations</code> holds settings for specific tools. Each tool reads its own key, here <code>vscode</code>, and ignores the rest.</p>
+
+  <h2 id="example">A complete example: FastAPI, PostgreSQL and Redis</h2>
+
+  <p>Here is everything together for a realistic Python API project:</p>
+
+<pre><code class="language-plaintext">my-fastapi-project/
+|-- .devcontainer/
+|   |-- devcontainer.json
+|   `-- docker-compose.yml
+|-- src/
+|   `-- main.py
+|-- requirements.txt
+`-- pyproject.toml</code></pre>
+
+<pre><code class="language-json">// .devcontainer/devcontainer.json
+{
+  "name": "FastAPI Dev",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "forwardPorts": [8000, "db:5432", "redis:6379"],
+
+  "portsAttributes": {
+    "8000": { "label": "FastAPI", "onAutoForward": "notify" },
+    "db:5432": { "label": "PostgreSQL", "onAutoForward": "silent" },
+    "redis:6379": { "label": "Redis", "onAutoForward": "silent" }
+  },
+
+  "updateContentCommand": "pip install --user -r requirements.txt",
+
+  "postCreateCommand": {
+    "pre-commit": "python -m pre_commit install",
+    "migrate": "python -m alembic upgrade head"
+  },
+
+  "remoteUser": "vscode",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "editor.formatOnSave": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        }
+      }
+    }
+  }
+}</code></pre>
+
+<pre><code class="language-yaml"># .devcontainer/docker-compose.yml
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/python:3.12
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity
+    environment:
+      DATABASE_URL: postgresql://postgres:devpassword@db:5432/myapp
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - db
+      - redis
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: myapp
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+volumes:
+  postgres-data:</code></pre>
+
+  <p>The tools run as <code>python -m pre_commit</code> and <code>python -m alembic</code> so that they are found even when the user-install <code>bin</code> folder is not on the <code>PATH</code>. Both packages come from <code>requirements.txt</code>.</p>
+
+  <p>When a new teammate clones this repository and opens it in VS Code:</p>
+
+  <ol>
+    <li>VS Code finds <code>.devcontainer/devcontainer.json</code> and offers to reopen the folder in a container.</li>
+    <li>Docker pulls the Python image and starts Postgres and Redis.</li>
+    <li><code>updateContentCommand</code> installs the dependencies, then <code>postCreateCommand</code> installs the Git hooks and runs the migrations.</li>
+    <li>VS Code installs the listed extensions inside the container.</li>
+    <li>They have a working development environment without installing anything but Docker and VS Code.</li>
+  </ol>
+
+  <h2 id="cli">The Dev Container CLI</h2>
+
+  <p>The Dev Container CLI is the reference implementation of the specification. It creates and configures a dev container from a <code>devcontainer.json</code>, and it is meant both for direct use and for tools that want to support the spec. The VS Code Dev Containers extension ships a variation of it, and CodeSandbox uses it to manage dev containers.</p>
+
+<pre><code class="language-bash">npm install -g @devcontainers/cli
+
+# Build the dev container image
+devcontainer build --workspace-folder .
+
+# Create and start the dev container
+devcontainer up --workspace-folder .
+
+# Run a command inside the container
+devcontainer exec --workspace-folder . python --version
+
+# Prebuild and push an image, for a faster first open
+devcontainer build \
+  --workspace-folder . \
+  --push \
+  --image-name ghcr.io/your-org/your-repo-devcontainer:latest</code></pre>
+
+  <p>The npm package needs Python and a C/C++ compiler to build one of its dependencies. The project also offers a standalone install script that brings its own Node.js runtime, if you prefer that.</p>
+
+  <p>The CLI is especially useful in CI. The <code>devcontainers/ci</code> GitHub Action is built on it, so you can run your tests in GitHub Actions in the same container you develop in:</p>
+
+<pre><code class="language-yaml"># .github/workflows/test.yml
+name: Test
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests in the dev container
+        uses: devcontainers/ci@v0.3
+        with:
+          imageName: ghcr.io/your-org/your-repo-devcontainer
+          push: never
+          runCmd: pytest tests/ -v --cov</code></pre>
+
+  <p>The same project ships an Azure DevOps task that does the same job.</p>
+
+  <h2 id="variables">Variables in devcontainer.json</h2>
+
+  <p><code>devcontainer.json</code> supports a set of predefined variables, so one file works on every machine:</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Variable</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td><code>${localWorkspaceFolder}</code></td><td>Path of the project folder on the host</td></tr>
+      <tr><td><code>${containerWorkspaceFolder}</code></td><td>Path of the project folder in the container</td></tr>
+      <tr><td><code>${localWorkspaceFolderBasename}</code></td><td>Name of the project folder on the host</td></tr>
+      <tr><td><code>${containerWorkspaceFolderBasename}</code></td><td>Name of the project folder in the container</td></tr>
+      <tr><td><code>${localEnv:VARIABLE_NAME}</code></td><td>Value of an environment variable on the host. Unset variables are left blank.</td></tr>
+      <tr><td><code>${containerEnv:VARIABLE_NAME}</code></td><td>Value of an environment variable inside the running container. Only in <code>remoteEnv</code>.</td></tr>
+      <tr><td><code>${devcontainerId}</code></td><td>An ID unique to this dev container and stable across rebuilds</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+<pre><code class="language-json">{
+  "mounts": [
+    {
+      "source": "${localWorkspaceFolder}/.cache",
+      "target": "/home/vscode/.cache",
+      "type": "bind"
+    }
+  ],
+  "remoteEnv": {
+    "AWS_ACCESS_KEY_ID": "${localEnv:AWS_ACCESS_KEY_ID}",
+    "AWS_SECRET_ACCESS_KEY": "${localEnv:AWS_SECRET_ACCESS_KEY}"
+  }
+}</code></pre>
+
+  <p>This is how you pass secrets from the host into the container without writing them into the repository. If you set a new variable on the host, you may need to restart VS Code before it sees it.</p>
+
+  <h2 id="metadata">Configuration inside the image</h2>
+
+  <p>Some <code>devcontainer.json</code> properties can be stored inside the image itself, in a label named <code>devcontainer.metadata</code>:</p>
+
+<pre><code class="language-dockerfile">LABEL devcontainer.metadata='[{"customizations": {"vscode": \
+  {"extensions": ["ms-python.python"]}}}]'</code></pre>
+
+  <p>When a tool creates a container from such an image, it merges this metadata with the local <code>devcontainer.json</code>. The image then describes itself: a short <code>devcontainer.json</code> that names a prebuilt image gets the right extensions without listing them again. The Dev Container CLI adds this label for you when it prebuilds an image, including the metadata of every Feature it installed.</p>
+
+  <h2 id="codespaces">GitHub Codespaces</h2>
+
+  <p>GitHub Codespaces builds its cloud environments from the same <code>devcontainer.json</code>. A configuration that works locally in VS Code works in Codespaces too.</p>
+
+<pre><code class="language-json">{
+  // Minimum machine size, for cloud services
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
+  "portsAttributes": {
+    "8000": {
+      "label": "Web App",
+      "onAutoForward": "openBrowser"
+    }
+  }
+}</code></pre>
+
+  <p><code>hostRequirements</code> is part of the general specification, not something specific to Codespaces. It states the minimum CPUs, memory and storage. Cloud services such as Codespaces use it to pick a suitable machine, and other tools show a warning when the machine falls short. <code>portsAttributes</code> works the same everywhere; here it opens the browser when port 8000 is forwarded.</p>
+
+  <h2 id="prebuild">Prebuilding images for speed</h2>
+
+  <p>The most common complaint about dev containers is the first open: building the image can take several minutes. The answer is to build it ahead of time.</p>
+
+<pre><code class="language-yaml"># .github/workflows/prebuild.yml
+name: Prebuild dev container
+on:
+  push:
+    branches: [main]
+    paths: ['.devcontainer/**']
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  prebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prebuild and push
+        uses: devcontainers/ci@v0.3
+        with:
+          imageName: ghcr.io/your-org/your-repo-devcontainer
+          cacheFrom: ghcr.io/your-org/your-repo-devcontainer
+          push: always</code></pre>
+
+  <p>The action can only push after the workflow has logged in to the registry, hence the login step and the <code>packages: write</code> permission. Without <code>imageTag</code>, the action tags the image <code>latest</code>.</p>
+
+<pre><code class="language-json">// .devcontainer/devcontainer.json
+{
+  // Use the prebuilt image
+  "image": "ghcr.io/your-org/your-repo-devcontainer:latest",
+
+  // Lifecycle scripts still run when the container is created
+  "postCreateCommand": "pip install --user -r requirements.txt"
+}</code></pre>
+
+  <p>With this setup, opening the dev container pulls the prebuilt image from the registry instead of building it, so the first open costs an image pull rather than a full build.</p>
+
+  <h2 id="tools">Supporting tools: not only VS Code</h2>
+
+  <p>The Dev Container specification is open, and any editor or service can implement it.</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Tool</th><th>Support</th></tr></thead>
+    <tbody>
+      <tr><td>VS Code</td><td>The Dev Containers extension</td></tr>
+      <tr><td>GitHub Codespaces</td><td>Cloud environments built from <code>devcontainer.json</code></td></tr>
+      <tr><td>JetBrains IDEs</td><td>IntelliJ IDEA has early support, locally with Docker or remotely over SSH</td></tr>
+      <tr><td>Cursor</td><td>Supported since version 0.22.0 (January 2024)</td></tr>
+      <tr><td>Ona (formerly Gitpod)</td><td>Follows the specification and uses <code>devcontainer.json</code></td></tr>
+      <tr><td>DevPod</td><td>Client-only tool that creates environments from <code>devcontainer.json</code> on any backend</td></tr>
+      <tr><td>GitHub Actions</td><td>The <code>devcontainers/ci</code> action</td></tr>
+      <tr><td>Azure DevOps</td><td>The <code>devcontainers/ci</code> Azure DevOps task</td></tr>
+      <tr><td>Dev Container CLI</td><td>Reference implementation, independent of any editor</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="templates">Templates: start in seconds</h2>
+
+  <p>If you do not have a <code>devcontainer.json</code> yet, you do not have to write one from scratch. VS Code offers a gallery of Templates:</p>
+
+  <ol>
+    <li>Open the Command Palette and run <strong>Dev Containers: Add Dev Container Configuration Files...</strong></li>
+    <li>Choose a Template (Python, Node, Go, Rust, Java and others).</li>
+    <li>Select any extra Features.</li>
+    <li>VS Code writes <code>devcontainer.json</code>, and a Dockerfile or Compose file if the Template uses one.</li>
+  </ol>
+
+  <h2 id="tips">Common patterns and tips</h2>
+
+  <h3>Keep shell history across rebuilds</h3>
+
+  <p>Store the history in a named volume. Using <code>${devcontainerId}</code> in the volume name gives each dev container its own volume.</p>
+
+<pre><code class="language-json">// .devcontainer/devcontainer.json
+{
+  "build": { "dockerfile": "Dockerfile" },
+  "mounts": [
+    {
+      "source": "bashhistory-${devcontainerId}",
+      "target": "/commandhistory",
+      "type": "volume"
+    }
+  ],
+  "remoteUser": "vscode"
+}</code></pre>
+
+  <p>A new volume belongs to <code>root</code>, so the Dockerfile creates the folder, hands it to the non-root user and points Bash at it:</p>
+
+<pre><code class="language-dockerfile"># .devcontainer/Dockerfile
+FROM mcr.microsoft.com/devcontainers/python:3.12
+ARG USERNAME=vscode
+RUN SNIPPET="export PROMPT_COMMAND='history -a' \
+      &amp;&amp; export HISTFILE=/commandhistory/.bash_history" \
+    &amp;&amp; mkdir /commandhistory \
+    &amp;&amp; touch /commandhistory/.bash_history \
+    &amp;&amp; chown -R $USERNAME /commandhistory \
+    &amp;&amp; echo "$SNIPPET" &gt;&gt; "/home/$USERNAME/.bashrc"</code></pre>
+
+  <h3>Dotfiles</h3>
+
+  <p>VS Code can clone your personal dotfiles repository (<code>.bashrc</code>, <code>.gitconfig</code> and so on) into every dev container it creates and run its install script. These are VS Code user settings, not <code>devcontainer.json</code> properties, because they belong to you and not to the project:</p>
+
+<pre><code class="language-json">// VS Code user settings (not devcontainer.json)
+{
+  "dotfiles.repository": "your-github-id/your-dotfiles-repo",
+  "dotfiles.targetPath": "~/dotfiles",
+  "dotfiles.installCommand": "install.sh"
+}</code></pre>
+
+  <h3>Run as a non-root user</h3>
+
+  <p>The Microsoft dev container images come with a non-root user: <code>vscode</code> in images such as <code>base</code>, <code>python</code>, <code>go</code>, <code>java</code> and <code>rust</code>, and <code>node</code> in the <code>javascript-node</code> image. Prefer it over <code>root</code>:</p>
+
+<pre><code class="language-json">{
+  "remoteUser": "vscode"
+}</code></pre>
+
+  <p>Without <code>remoteUser</code>, the tool runs as whatever user the container runs as, which is often <code>root</code>.</p>
+
+  <h2 id="alternatives">Dev containers and the alternatives</h2>
+
+  <p><strong>virtualenv or venv.</strong> A Python virtual environment isolates Python packages and nothing else. You still need the right Python version, system libraries and tools on the host. A dev container isolates all of it, down to the operating system packages.</p>
+
+  <p><strong>Plain Docker.</strong> <code>docker run</code> gives you a container, not a development workflow: no editor integration, no extension management, no lifecycle scripts. Dev containers are the layer that turns a container into a full editor setup.</p>
+
+  <p><strong>Vagrant.</strong> Vagrant provisions virtual machines, which are heavier and slower to start than containers, because each one boots its own kernel. Vagrant still makes sense when you need the stronger isolation of a full VM.</p>
+
+  <p><strong>Nix and devenv.</strong> Nix gives reproducible environments at the package level and pins exact tool versions without containers. The cost is a steeper learning curve and less editor integration out of the box. The two also combine: there is an official Nix Feature (<code>ghcr.io/devcontainers/features/nix</code>) that installs Nix inside a dev container.</p>
+
+  <p><strong>GitHub Codespaces on its own.</strong> Codespaces is dev containers running in the cloud. Running the same dev containers locally gives you the same environment without a network connection and without cloud costs.</p>
+
+  <h2 id="next">Where to go from here</h2>
+
+  <ul>
+    <li><a href="https://containers.dev/">containers.dev</a>: the specification site, with the reference, the Feature gallery and the Templates.</li>
+    <li><a href="https://containers.dev/implementors/json_reference/">devcontainer.json reference</a>: every property, documented.</li>
+    <li><a href="https://containers.dev/features">Available Features</a>: a searchable list of Features.</li>
+    <li><a href="https://containers.dev/templates">Available Templates</a>: starting configurations for common stacks.</li>
+    <li><a href="https://code.visualstudio.com/docs/devcontainers/containers">VS Code Dev Containers documentation</a>: the VS Code guide.</li>
+    <li><a href="https://github.com/devcontainers/cli">Dev Container CLI</a>: the reference implementation.</li>
+    <li><a href="https://github.com/devcontainers/ci">devcontainers/ci</a>: the GitHub Action and the Azure DevOps task.</li>
+  </ul>
+
+  <h2 id="close">Closing</h2>
+
+  <p>Dev containers feel like overhead until the first time a teammate says "I cloned the repository and everything just worked". After that they feel obvious.</p>
+
+  <p>The design is small: one JSON file, a clear set of lifecycle commands, modular Features, and editor integrations that do the rest. The work of keeping environments in line across machines, operating systems and CI systems mostly goes away.</p>
+
+  <p>Whether you are a solo developer who moves between machines, a team lead who wants predictable onboarding, or a platform engineer who needs reproducible CI environments, dev containers solve a real problem, and they work for one person as well as for a large team.</p>
+
+  <p>To try it, open the Command Palette, run "Dev Containers: Add Dev Container Configuration Files...", pick Python, and let VS Code reopen the folder in the container.</p>
+
+  <h2 id="sources">Sources</h2>
+  <ul class="sources">
+    <li>Development Containers, <a href="https://containers.dev/">containers.dev</a>, <a href="https://containers.dev/overview">Overview</a> and <a href="https://containers.dev/supporting">Supporting tools and services</a></li>
+    <li>Development Containers, <a href="https://containers.dev/implementors/spec/">Dev Container specification</a> and <a href="https://containers.dev/implementors/json_reference/">devcontainer.json reference</a></li>
+    <li>Development Containers, <a href="https://containers.dev/implementors/features/">Features specification</a> and <a href="https://containers.dev/implementors/features-distribution/">Features distribution</a></li>
+    <li>GitHub, <a href="https://github.com/devcontainers/features">devcontainers/features</a> (python, node, docker-in-docker, git, github-cli and nix Features)</li>
+    <li>GitHub, <a href="https://github.com/devcontainers/images">devcontainers/images</a>, including the <a href="https://github.com/devcontainers/images/tree/main/src/python">Python image README</a></li>
+    <li>GitHub, <a href="https://github.com/devcontainers/cli">devcontainers/cli</a> and <a href="https://github.com/devcontainers/ci">devcontainers/ci</a> with its <a href="https://github.com/devcontainers/ci/blob/main/docs/github-action.md">GitHub Action documentation</a></li>
+    <li>Visual Studio Code, <a href="https://code.visualstudio.com/docs/devcontainers/containers">Developing inside a Container</a> and <a href="https://code.visualstudio.com/remote/advancedcontainers/persist-bash-history">Persist bash history</a></li>
+    <li>Docker, <a href="https://docs.docker.com/reference/compose-file/version-and-name/">Compose file reference: version and name top-level elements</a></li>
+    <li>Cursor, <a href="https://cursor.com/changelog/0-22-0">changelog 0.22.0: Dev Containers</a> (6 January 2024)</li>
+  </ul>
+</article>
+</main>
+
+<footer>
+  <p>Kapil Dagur · <a href="../../">kapildagur.github.io</a> · <a href="https://github.com/kapildagur">GitHub</a> · <a href="https://linkedin.com/in/kapildagur">LinkedIn</a></p>
+</footer>
+<script src="../assets/highlight/highlight.min.js" defer></script>
+<script src="../assets/highlight/dockerfile.min.js" defer></script>
+<script src="../assets/highlight/init.js" defer></script>
+</body>
+</html>

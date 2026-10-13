@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<script>document.documentElement.classList.replace("no-js","js");</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blog | Kapil Dagur</title>
+<meta name="description" content="Writing by Kapil Dagur on backend engineering and Python tooling.">
+<meta name="author" content="Kapil Dagur">
+<link rel="canonical" href="https://kapildagur.github.io/blog/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kapildagur.github.io/blog/">
+<meta property="og:title" content="Blog | Kapil Dagur">
+<meta property="og:description" content="Backend engineering and Python tooling.">
+<meta property="og:image" content="https://github.com/kapildagur.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23080c10'/%3E%3Cg fill='none' stroke='%2300e6a0' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 7c-3 0-4 1.5-4 4v5c0 2-1 3-3 3c2 0 3 1 3 3v5c0 2.5 1 4 4 4'/%3E%3Cpath d='M30 7c3 0 4 1.5 4 4v5c0 2 1 3 3 3c-2 0-3 1-3 3v5c0 2.5-1 4-4 4'/%3E%3C/g%3E%3Ctext x='20' y='25' text-anchor='middle' font-family='sans-serif' font-weight='800' font-size='12' fill='%23e2e8f0'%3EKD%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="blog.css?v=9">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<nav class="site-nav" aria-label="Site">
+  <a class="logo" href="../" aria-label="Kapil Dagur, home"><svg class="logo-mark" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true" focusable="false"><g fill="none" stroke="#00e6a0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6c-3 0-4 1.5-4 4v5c0 2-1 3-3 3c2 0 3 1 3 3v5c0 2.5 1 4 4 4" transform="translate(1 1)"/><path d="M31 6c3 0 4 1.5 4 4v5c0 2 1 3 3 3c-2 0-3 1-3 3v5c0 2.5-1 4-4 4" transform="translate(-1 1)"/></g><text x="20" y="24.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="11" fill="#e2e8f0">KD</text></svg></a>
+  <ul>
+    <li><a href="../">Home</a></li>
+    <li><a href="./" aria-current="page">Blog</a></li>
+  </ul>
+</nav>
+
+<main id="main" class="index">
+  <header class="blog-head">
+    <p class="prompt" aria-hidden="true"><span class="prompt-sign">$</span> ls -lt ~/blog<span class="caret"></span></p>
+    <h1 class="visually-hidden">Blog</h1>
+    <p class="stats"><span>4 posts</span><span>2 topics</span><span>66 min of reading</span></p>
+    <p class="lede">Notes on backend engineering, Python tooling and the systems I work with.</p>
+  </header>
+
+  <div class="filters" role="group" aria-label="Filter posts by topic">
+    <button type="button" class="chip" data-filter="all" aria-pressed="true">All <span class="count">4</span></button>
+    <button type="button" class="chip topic-python" data-filter="python" aria-pressed="false">Python <span class="count">3</span></button>
+    <button type="button" class="chip topic-tooling" data-filter="tooling" aria-pressed="false">Tooling <span class="count">3</span></button>
+  </div>
+
+  <ol class="bento">
+    <li class="tile topic-tooling tile-big" data-topics="tooling">
+      <a href="dev-containers/">
+        <pre class="tile-code" aria-hidden="true">{
+  &quot;name&quot;: &quot;My Python App&quot;,
+  &quot;image&quot;: &quot;mcr.microsoft.com/devcontainers/python:3.12&quot;,
+  &quot;forwardPorts&quot;: [8000],
+  &quot;postCreateCommand&quot;: &quot;pip install --user -r requirements.txt&quot;
+}</pre>
+        <span class="tile-num" aria-hidden="true">01</span>
+        <span class="tile-meta"><span class="tile-latest">Latest</span>Tooling · 20 min</span>
+        <span class="tile-title">Dev Containers: your entire dev environment in a single JSON file</span>
+        <span class="tile-summary">How devcontainer.json packages tools, runtimes and editor settings so every developer works in the same environment.</span>
+        <time class="tile-date" datetime="2026-04-15">15 Apr 2026</time>
+      </a>
+    </li>
+    <li class="tile topic-python" data-topics="python tooling">
+      <a href="mypy-guide/">
+        <pre class="tile-code" aria-hidden="true">def greet(name: str) -&gt; str:
+    return &quot;Hello, &quot; + name
+
+greet(42)  # error: Argument 1 has
+           # incompatible type &quot;int&quot;</pre>
+        <span class="tile-num" aria-hidden="true">02</span>
+        <span class="tile-meta">Python · 21 min</span>
+        <span class="tile-title">mypy: make Python&#x27;s type hints actually do something</span>
+        <span class="tile-summary">Static type checking in Python, from the first annotation to strict mode.</span>
+        <time class="tile-date" datetime="2026-03-15">15 Mar 2026</time>
+      </a>
+    </li>
+    <li class="tile topic-python" data-topics="python">
+      <a href="pytest-guide/">
+        <pre class="tile-code" aria-hidden="true">@pytest.fixture
+def sample_user():
+    return {&quot;name&quot;: &quot;Alice&quot;}
+
+def test_name(sample_user):
+    assert sample_user[&quot;name&quot;] == &quot;Alice&quot;</pre>
+        <span class="tile-num" aria-hidden="true">03</span>
+        <span class="tile-meta">Python · 15 min</span>
+        <span class="tile-title">pytest: the Python testing framework that makes you want to write tests</span>
+        <span class="tile-summary">Fixtures, parametrize, mocking and plugins, with what changed in pytest 9.0.</span>
+        <time class="tile-date" datetime="2026-03-07">7 Mar 2026</time>
+      </a>
+    </li>
+    <li class="tile topic-python tile-wide" data-topics="python tooling">
+      <a href="meet-uv/">
+        <pre class="tile-code" aria-hidden="true">$ uv init my-app
+$ uv add fastapi uvicorn
+$ uv run uvicorn main:app --reload</pre>
+        <span class="tile-num" aria-hidden="true">04</span>
+        <span class="tile-meta">Python · 10 min</span>
+        <span class="tile-title">Meet uv: one tool for Python packages, versions and projects</span>
+        <span class="tile-summary">How uv replaces pip, pyenv, virtualenv, pipx and Poetry with a single fast binary.</span>
+        <time class="tile-date" datetime="2026-02-24">24 Feb 2026</time>
+      </a>
+    </li>
+  </ol>
+  <p class="empty-note" hidden>No posts on this topic yet.</p>
+</main>
+
+<footer>
+  <p>Kapil Dagur · <a href="../">kapildagur.github.io</a> · <a href="https://github.com/kapildagur">GitHub</a> · <a href="https://linkedin.com/in/kapildagur">LinkedIn</a></p>
+</footer>
+<script src="assets/blog-index.js" defer></script>
+</body>
+</html>

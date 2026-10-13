@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mypy: make Python's type hints actually do something | Kapil Dagur</title>
+<meta name="description" content="A practical guide to static type checking in Python with mypy 1.19: annotations, TypedDict, Protocols, generics, narrowing, strict mode, gradual adoption, plugins, CI and mypyc.">
+<meta name="author" content="Kapil Dagur">
+<link rel="canonical" href="https://kapildagur.github.io/blog/mypy-guide/">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kapildagur.github.io/blog/mypy-guide/">
+<meta property="og:title" content="mypy: make Python's type hints actually do something">
+<meta property="og:description" content="Static type checking in Python with mypy 1.19, from the first annotation to strict mode, Protocols, TypedDict and mypyc.">
+<meta property="og:image" content="https://github.com/kapildagur.png">
+<meta property="article:published_time" content="2026-03-15">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23080c10'/%3E%3Cg fill='none' stroke='%2300e6a0' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 7c-3 0-4 1.5-4 4v5c0 2-1 3-3 3c2 0 3 1 3 3v5c0 2.5 1 4 4 4'/%3E%3Cpath d='M30 7c3 0 4 1.5 4 4v5c0 2 1 3 3 3c-2 0-3 1-3 3v5c0 2.5-1 4-4 4'/%3E%3C/g%3E%3Ctext x='20' y='25' text-anchor='middle' font-family='sans-serif' font-weight='800' font-size='12' fill='%23e2e8f0'%3EKD%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../blog.css?v=9">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<nav class="site-nav" aria-label="Site">
+  <a class="logo" href="../../" aria-label="Kapil Dagur, home"><svg class="logo-mark" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true" focusable="false"><g fill="none" stroke="#00e6a0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6c-3 0-4 1.5-4 4v5c0 2-1 3-3 3c2 0 3 1 3 3v5c0 2.5 1 4 4 4" transform="translate(1 1)"/><path d="M31 6c3 0 4 1.5 4 4v5c0 2 1 3 3 3c-2 0-3 1-3 3v5c0 2.5-1 4-4 4" transform="translate(-1 1)"/></g><text x="20" y="24.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="11" fill="#e2e8f0">KD</text></svg></a>
+  <ul>
+    <li><a href="../../">Home</a></li>
+    <li><a href="../" aria-current="page">Blog</a></li>
+  </ul>
+</nav>
+
+<main id="main">
+<article>
+  <p class="post-meta">15 Mar 2026 · 21 min read · Python, Tooling</p>
+  <h1>mypy: make Python's type hints actually do something</h1>
+  <p class="lede">A practical guide to static type checking in Python: from your first annotation to strict mode, Protocols, TypedDict, mypyc, and what changed in mypy 1.15 to 1.19.</p>
+  <p class="post-meta">Originally published on <a href="https://kapildagur.medium.com/mypy-make-pythons-type-hints-actually-do-something-b131c3f4d8cf">Medium</a>; revised for this site.</p>
+
+  <p>Here is a scenario you have probably lived through. You write a function and it works. Six weeks later you call it from somewhere else, pass in <code>None</code> by accident, and get <code>AttributeError: 'NoneType' object has no attribute 'strip'</code> at 4 pm on a Friday. Then you spend twenty minutes tracing back through the call chain to find where the <code>None</code> came from.</p>
+
+  <p>The information needed to catch that bug was already in the code. Nobody asked for it to be checked.</p>
+
+  <p>mypy is the tool that asks. It reads your type annotations and reasons about your code before you run it, so it reports this kind of mistake at the line where you made it, not when a user hits it.</p>
+
+  <p>This guide is written against mypy 1.19.1, released in December 2025 and the current release at the time of writing. It covers why type checking is worth it, how to read and write annotations, the main features of the type system, the recent mypy releases, and how to adopt all of it in an existing project.</p>
+
+  <h2 id="type-hints">Doesn't Python already have type hints?</h2>
+
+  <p>It does. Python has had type annotations since Python 3.5, specified in PEP 484. You can write this:</p>
+
+<pre><code class="language-python">def greet(name: str) -&gt; str:
+    return "Hello, " + name</code></pre>
+
+  <p>At runtime, Python ignores those annotations. They are metadata. Nothing stops you from calling <code>greet(42)</code>: Python tries to concatenate <code>"Hello, "</code> with <code>42</code> and raises a <code>TypeError</code>.</p>
+
+  <p>mypy is a static type checker. It reads your annotations and your code, and before anything runs, it tells you where the types do not line up. Think of it as a spell-checker for your type logic.</p>
+
+  <p>It is also optional and incremental. You can add it to an existing project one file at a time, without a rewrite.</p>
+
+  <h2 id="installation">Installation</h2>
+
+<pre><code class="language-bash">pip install mypy
+# or, in a uv project
+uv add --dev mypy</code></pre>
+
+  <p>Check your version:</p>
+
+<pre><code class="language-bash">uv run mypy --version
+# mypy 1.19.1 (compiled: yes)</code></pre>
+
+  <p><code>(compiled: yes)</code> means you are running the build of mypy that is compiled with mypyc, which is what the wheels on PyPI contain. It is much faster than the pure Python version; more on mypyc later.</p>
+
+  <h2 id="first-file">Your first type-checked file</h2>
+
+<pre><code class="language-python"># greet.py
+def greet(name: str) -&gt; str:
+    return "Hello, " + name
+
+result = greet("Alice")   # fine
+wrong = greet(42)         # mypy catches this</code></pre>
+
+  <p>Run mypy on it:</p>
+
+<pre><code class="language-plaintext">$ mypy --pretty greet.py
+greet.py:5: error: Argument 1 to "greet" has incompatible type "int";
+expected "str"  [arg-type]
+    wrong = greet(42)         # mypy catches this
+                  ^~
+Found 1 error in 1 file (checked 1 source file)</code></pre>
+
+  <p>That is the core value of mypy: it found the bug before the code ran. No test, no runtime, no user report.</p>
+
+  <h2 id="output">Reading mypy's output</h2>
+
+  <p>Every mypy message follows the same format:</p>
+
+<pre><code class="language-plaintext">FILE:LINE: SEVERITY: MESSAGE  [ERROR-CODE]</code></pre>
+
+  <ul>
+    <li><code>greet.py:5</code> is the file and line where the problem is.</li>
+    <li><code>error</code> is the severity. You will also see <code>note</code> lines, which add context to an error.</li>
+    <li><code>[arg-type]</code> is the error code. You can use it to silence or filter one kind of error without hiding the others.</li>
+  </ul>
+
+  <p>Without <code>--pretty</code>, each message is a single line. With it, mypy wraps long messages to the width of your terminal and points at the exact expression, which is how the samples in this post are shown. The messages are precise and readable, and that is one of mypy's real strengths.</p>
+
+  <h2 id="basics">The basic type annotations</h2>
+
+  <h3>Built-in types</h3>
+
+<pre><code class="language-python">name: str = "Alice"
+age: int = 30
+height: float = 5.9
+active: bool = True
+data: bytes = b"hello"</code></pre>
+
+  <h3>Collections</h3>
+
+  <p>Since Python 3.9 (PEP 585) you can use the built-in collection types directly, with no import from <code>typing</code>:</p>
+
+<pre><code class="language-python">names: list[str] = ["Alice", "Bob"]
+scores: dict[str, int] = {"Alice": 95, "Bob": 87}
+coords: tuple[float, float] = (1.0, 2.0)
+unique: set[str] = {"a", "b", "c"}
+
+# A tuple of any length, all ints
+items: tuple[int, ...] = (1, 2, 3, 4)</code></pre>
+
+  <h3>Optional values</h3>
+
+  <p>A value that may be <code>None</code> can be written two ways. They mean the same thing; the <code>|</code> syntax needs Python 3.10 or later (PEP 604) and is the one I use.</p>
+
+<pre><code class="language-python">from typing import Optional
+
+
+def find_user(user_id: int) -&gt; Optional[str]:  # classic spelling
+    ...
+
+
+def find_user_by_email(email: str) -&gt; str | None:  # modern, preferred
+    ...</code></pre>
+
+  <p>The two functions have different names on purpose. If you define <code>find_user</code> twice in one module to compare the spellings, mypy reports the second one as a redefinition.</p>
+
+  <p><code>str | None</code> means "either a <code>str</code> or <code>None</code>". It is one of the most useful annotations you can write, because mypy then makes you handle the <code>None</code> case everywhere the value is used. That is exactly the Friday afternoon bug from the introduction.</p>
+
+  <h3>Union types</h3>
+
+<pre><code class="language-python">from typing import Union
+
+
+def process(value: Union[str, int]) -&gt; str:  # older spelling
+    return str(value)
+
+
+def process_new(value: str | int) -&gt; str:  # Python 3.10 and later
+    return str(value)</code></pre>
+
+  <h2 id="functions">Function annotations in depth</h2>
+
+<pre><code class="language-python">from collections.abc import Callable, Generator, Iterator
+
+
+# A function that takes another function as an argument
+def apply(func: Callable[[int], str], value: int) -&gt; str:
+    return func(value)
+
+
+# A generator: yield type, send type, return type
+def count_up(start: int) -&gt; Generator[int, None, None]:
+    while True:
+        yield start
+        start += 1
+
+
+# When you only yield, Iterator[int] is shorter and means the same
+def count_up_simple(start: int) -&gt; Iterator[int]:
+    while True:
+        yield start
+        start += 1
+
+
+# *args and **kwargs: annotate the type of each item
+def log(*args: str, **kwargs: int) -&gt; None:
+    ...
+
+
+# A function that returns nothing
+def setup() -&gt; None:
+    ...</code></pre>
+
+  <h2 id="typeddict">TypedDict: typing your dictionaries</h2>
+
+  <p>This is one of the most practical features for real code. If you pass dictionaries around as structured data, <code>TypedDict</code> (PEP 589, Python 3.8) gives mypy a structure to check them against:</p>
+
+<pre><code class="language-python">from typing import TypedDict
+
+
+class UserConfig(TypedDict):
+    name: str
+    age: int
+    email: str
+
+
+def send_welcome(config: UserConfig) -&gt; None:
+    print(f"Welcome, {config['name']}!")
+    print(f"Sending to {config['email']}")
+
+
+send_welcome({"name": "Alice", "age": 30, "email": "alice@example.com"})
+send_welcome({"name": "Bob", "age": 25})
+send_welcome(
+    {"name": "Carol", "age": "thirty", "email": "carol@example.com"}
+)</code></pre>
+
+  <p>The first call is fine. mypy reports the other two:</p>
+
+<pre><code class="language-plaintext">typeddict_demo.py:16: error: Missing key "email" for TypedDict "UserConfig"
+ [typeddict-item]
+typeddict_demo.py:18: error: Incompatible types (expression has type "str",
+TypedDict item "age" has type "int")  [typeddict-item]</code></pre>
+
+  <p>You can also mark individual keys as optional with <code>NotRequired</code> (PEP 655, in <code>typing</code> since Python 3.11; use <code>typing_extensions</code> on older versions):</p>
+
+<pre><code class="language-python">from typing import NotRequired, TypedDict
+
+
+class UserConfig(TypedDict):
+    name: str
+    email: str
+    age: NotRequired[int]  # this key may be missing
+
+
+ok: UserConfig = {"name": "Dana", "email": "dana@example.com"}</code></pre>
+
+  <h2 id="dataclasses">dataclasses and type safety</h2>
+
+  <p>Python's dataclasses work well with mypy:</p>
+
+<pre><code class="language-python">from dataclasses import dataclass, field
+
+
+@dataclass
+class Product:
+    name: str
+    price: float
+    tags: list[str] = field(default_factory=list)
+    in_stock: bool = True
+
+
+p = Product(name="Widget", price=9.99)
+print(p.price + 1)    # fine: float + int
+print(p.price + "1")  # error: float + str</code></pre>
+
+<pre><code class="language-plaintext">dc.py:14: error: Unsupported operand types for + ("float" and "str")
+[operator]</code></pre>
+
+  <p>You already write the field types when you use dataclasses, so the type checking comes almost for free.</p>
+
+  <h2 id="protocols">Protocols: duck typing with type safety</h2>
+
+  <p>This is one of the most useful and least used features of the type system. In Python, a class does not need to inherit from anything to be compatible with code that uses it: if an object has the right methods, it works. Protocols (PEP 544, Python 3.8) let you describe that with full type checking.</p>
+
+<pre><code class="language-python">from typing import Protocol
+
+
+class Drawable(Protocol):
+    def draw(self) -&gt; None: ...
+    def resize(self, factor: float) -&gt; None: ...
+
+
+class Circle:
+    def __init__(self, radius: float) -&gt; None:
+        self.radius = radius
+
+    def draw(self) -&gt; None:
+        print("Drawing circle")
+
+    def resize(self, factor: float) -&gt; None:
+        self.radius *= factor
+
+
+class Square:
+    def __init__(self, side: float) -&gt; None:
+        self.side = side
+
+    def draw(self) -&gt; None:
+        print("Drawing square")
+
+    def resize(self, factor: float) -&gt; None:
+        self.side *= factor
+
+
+def render(shape: Drawable) -&gt; None:
+    shape.draw()
+
+
+render(Circle(1.0))  # fine
+render(Square(2.0))  # fine
+render("hello")      # error: str has no draw() or resize()</code></pre>
+
+<pre><code class="language-plaintext">proto.py:37: error: Argument 1 to "render" has incompatible type "str";
+expected "Drawable"  [arg-type]</code></pre>
+
+  <p><code>Circle</code> and <code>Square</code> do not inherit from <code>Drawable</code>. They do not even know it exists. Because their methods match the protocol, mypy accepts them. This is structural subtyping: Python's usual duck typing, made checkable before the code runs.</p>
+
+  <h2 id="generics">Generics: flexible code that stays type-safe</h2>
+
+<pre><code class="language-python">from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+
+class Stack(Generic[T]):
+    def __init__(self) -&gt; None:
+        self._items: list[T] = []
+
+    def push(self, item: T) -&gt; None:
+        self._items.append(item)
+
+    def pop(self) -&gt; T:
+        return self._items.pop()
+
+
+int_stack: Stack[int] = Stack()
+int_stack.push(1)
+int_stack.push(2)
+value: int = int_stack.pop()  # mypy knows this is int
+int_stack.push("hello")       # error: expected int, got str</code></pre>
+
+<pre><code class="language-plaintext">gen.py:21: error: Argument 1 to "push" of "Stack" has incompatible type
+"str"; expected "int"  [arg-type]</code></pre>
+
+  <p>Python 3.12 added a shorter syntax for generics (PEP 695). The type parameter is declared in brackets after the class name, with no <code>TypeVar</code> import:</p>
+
+<pre><code class="language-python">class Stack[T]:
+    def __init__(self) -&gt; None:
+        self._items: list[T] = []
+
+    def push(self, item: T) -&gt; None:
+        self._items.append(item)
+
+    def pop(self) -&gt; T:
+        return self._items.pop()</code></pre>
+
+  <h2 id="narrowing">Narrowing: mypy follows your logic</h2>
+
+  <p>One of mypy's most impressive abilities is type narrowing. It tracks how <code>isinstance</code> checks, <code>if</code> conditions and <code>assert</code> statements change which types are possible at each point in your code.</p>
+
+<pre><code class="language-python">def process(value: str | int | None) -&gt; str:
+    if value is None:
+        return "nothing"
+    # Here mypy knows value is str | int.
+    if isinstance(value, int):
+        return str(value * 2)
+    # Here mypy knows value is str.
+    return value.upper()
+
+
+def get_user(user_id: int) -&gt; str | None:
+    return None if user_id &lt; 0 else "alice"
+
+
+user = get_user(1)
+assert user is not None  # mypy narrows user to str after this line
+print(user.upper())      # safe</code></pre>
+
+  <p>This is what makes mypy feel smart rather than pedantic. It does not match types mechanically; it reasons about your control flow. If you want to see what mypy has inferred at any point, add <code>reveal_type(user)</code> and run mypy: it prints a note such as <code>Revealed type is "builtins.str"</code>.</p>
+
+  <h2 id="literal">Literal types: when the value matters, not only the type</h2>
+
+<pre><code class="language-python">from typing import Literal
+
+Direction = Literal["north", "south", "east", "west"]
+
+
+def move(direction: Direction) -&gt; None:
+    print(f"Moving {direction}")
+
+
+move("north")  # fine
+move("up")     # error: not a valid Direction
+
+# Useful for status codes, modes and states
+Status = Literal["pending", "active", "cancelled"]
+
+
+def update_order(order_id: int, status: Status) -&gt; None:
+    ...
+
+
+update_order(1, "active")   # fine
+update_order(1, "deleted")  # error: mypy catches the typo</code></pre>
+
+<pre><code class="language-plaintext">lit.py:11: error: Argument 1 to "move" has incompatible type
+"Literal['up']"; expected "Literal['north', 'south', 'east', 'west']"
+[arg-type]</code></pre>
+
+  <p><code>Literal</code> (PEP 586) prevents magic-string bugs: the kind where you mistype a status value and nothing fails until you notice the data is wrong.</p>
+
+  <h2 id="final">Final and ClassVar</h2>
+
+<pre><code class="language-python">from typing import ClassVar, Final
+
+MAX_RETRIES: Final = 3  # cannot be reassigned
+MAX_RETRIES = 5         # error
+
+
+class Config:
+    debug: ClassVar[bool] = False  # belongs to the class
+    name: str                      # belongs to each instance
+
+
+Config.debug = True  # fine: set on the class
+instance = Config()
+instance.debug = True  # error: ClassVar set through an instance</code></pre>
+
+<pre><code class="language-plaintext">fin.py:4: error: Cannot assign to final name "MAX_RETRIES"  [misc]
+fin.py:14: error: Cannot assign to class variable "debug" via instance
+[misc]</code></pre>
+
+  <h2 id="escape-hatches">cast and type: ignore, the escape hatches</h2>
+
+  <p>Sometimes you know more than mypy does. These are the ways to tell it so:</p>
+
+<pre><code class="language-python">from typing import cast
+
+# You know the return type; mypy only sees Any
+result = cast(str, some_opaque_function())
+
+# Silence one error code on one line
+x: str = legacy_function()  # type: ignore[assignment]
+
+# Silence every error on one line (use sparingly)
+y: str = legacy_function()  # type: ignore</code></pre>
+
+  <p>Prefer <code># type: ignore[error-code]</code> to a bare <code># type: ignore</code>. Being specific means a new, different error on the same line still shows up: mypy reports it, with a note saying its code is "not covered by" the comment. Turn on <code>--warn-unused-ignores</code> (it is part of <code>--strict</code>) and mypy also reports every ignore comment that no longer suppresses anything, with the code <code>[unused-ignore]</code>, so the comments do not pile up after the underlying problem is fixed.</p>
+
+  <h2 id="recent">What changed in recent releases</h2>
+
+  <h3>mypy 1.18: about 40 percent faster</h3>
+
+  <p>mypy 1.18.1, released in September 2025, is about 40 percent faster than 1.17 when type checking mypy itself, and in extreme cases the improvement is 10x or more. The gains come from many optimizations, including caching the inferred types of common expressions, plus improvements in mypyc that also speed up the compiled mypy. If mypy was the slow step in your CI, this release is worth the upgrade on its own.</p>
+
+  <p>The release notes add one caution: the type caching carries a small risk of regressions. If you see an unexpected inferred type, check whether <code>--disable-expression-cache</code> changes it, and mention that in your bug report.</p>
+
+  <h3>mypy 1.18 and 1.19: the fixed-format cache</h3>
+
+  <p>mypy keeps a cache so that later runs can reuse earlier results. mypy 1.18 added a new binary format for this cache, the fixed-format cache, as an experimental feature that worked only with the compiled build. The release notes say it makes incremental builds up to twice as fast. In mypy 1.19 the feature is no longer experimental, and the mypy team plans to make it the default in a future release, possibly 1.20.</p>
+
+  <p>Enable it on the command line:</p>
+
+<pre><code class="language-bash">mypy --fixed-format-cache myapp/</code></pre>
+
+  <p>Or in your configuration file:</p>
+
+<pre><code class="language-ini">[mypy]
+fixed_format_cache = true</code></pre>
+
+  <p>The new format is faster and smaller than the old JSON cache, but you cannot read it directly. If you have tooling that parses the cache, mypy 1.19 ships a converter: <code>python -m mypy.exportjson</code> turns a <code>.data.ff</code> file back into JSON. mypy 1.19 also adds a runtime dependency on the <code>librt</code> package, which it uses to read and write this cache.</p>
+
+  <h3>mypy 1.18: disjoint bases (PEP 800)</h3>
+
+  <p>mypy 1.18 added support for PEP 800, which targets Python 3.15. It recognizes the <code>@disjoint_base</code> decorator and rejects class definitions that combine incompatible base classes. A disjoint base is a class whose instances have a memory layout that cannot be combined with another such class. Many built-in classes are like this: CPython cannot create a class that inherits from both <code>str</code> and <code>Exception</code>, and now mypy knows that too.</p>
+
+<pre><code class="language-python">from typing_extensions import disjoint_base
+
+
+@disjoint_base
+class A: ...
+
+
+@disjoint_base
+class B: ...
+
+
+class C(A, B): ...              # error
+class Bad(str, Exception): ...  # error</code></pre>
+
+<pre><code class="language-plaintext">disj.py:12: error: Class "C" has incompatible disjoint bases  [misc]
+disj.py:13: error: Class "Bad" has incompatible disjoint bases  [misc]</code></pre>
+
+  <p>On current Python versions the decorator comes from <code>typing_extensions</code> (4.15.0 or later). Most of its users are the authors of stub files for C extensions and the standard library; the PEP says it is not meant to be added routinely to ordinary classes. What you gain as an application developer is better checking: mypy rejects class hierarchies that would fail at runtime, and it uses the same knowledge when it decides whether an <code>isinstance</code> branch can ever be reached.</p>
+
+  <h3>mypy 1.15: the --strict-bytes flag</h3>
+
+  <p>For historical reasons, mypy treats <code>bytearray</code> and <code>memoryview</code> values as assignable to <code>bytes</code>. PEP 688 removed that special case, and mypy 1.15 added <code>--strict-bytes</code> to turn it off:</p>
+
+<pre><code class="language-python">def checksum(data: bytes) -&gt; int:
+    return sum(data)
+
+
+checksum(bytearray(b"abc"))  # accepted unless --strict-bytes is on</code></pre>
+
+<pre><code class="language-bash">$ mypy --strict-bytes sb.py
+sb.py:5: error: Argument 1 to "checksum" has incompatible type "bytearray";
+expected "bytes"  [arg-type]</code></pre>
+
+  <p>Since mypy 1.16, <code>--strict</code> includes <code>--strict-bytes</code>, and the flag will be on by default in mypy 2.0. If you work with binary data and do not use <code>--strict</code>, enable it now, and annotate parameters that accept any bytes-like object as <code>bytes | bytearray | memoryview</code> or <code>collections.abc.Buffer</code>. That way the change in 2.0 does not arrive as a surprise.</p>
+
+  <h2 id="configuration">Configuration in pyproject.toml</h2>
+
+<pre><code class="language-ini"># pyproject.toml
+[tool.mypy]
+python_version = "3.12"
+strict = true
+pretty = true
+
+# Per-module overrides help with gradual adoption
+[[tool.mypy.overrides]]
+module = "legacy_module.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false</code></pre>
+
+  <p><code>strict = true</code> is shorthand for a set of checks. In mypy 1.19 it enables <code>warn_unused_configs</code>, <code>disallow_any_generics</code>, <code>disallow_subclassing_any</code>, <code>disallow_untyped_calls</code>, <code>disallow_untyped_defs</code>, <code>disallow_incomplete_defs</code>, <code>check_untyped_defs</code>, <code>disallow_untyped_decorators</code>, <code>warn_redundant_casts</code>, <code>warn_unused_ignores</code>, <code>warn_return_any</code>, <code>no_implicit_reexport</code>, <code>strict_equality</code>, <code>strict_bytes</code> and <code>extra_checks</code>. You do not need to list those again once <code>strict</code> is on. The most important ones:</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Flag enabled by strict</th><th>What it catches</th></tr></thead>
+    <tbody>
+      <tr><td><code>disallow_untyped_defs</code></td><td>Functions with missing annotations</td></tr>
+      <tr><td><code>check_untyped_defs</code></td><td>Errors inside the bodies of functions that have no annotations</td></tr>
+      <tr><td><code>disallow_any_generics</code></td><td>Generic types used without parameters, such as <code>list</code> instead of <code>list[str]</code></td></tr>
+      <tr><td><code>warn_return_any</code></td><td>Returning <code>Any</code> from a function declared to return a specific type</td></tr>
+      <tr><td><code>strict_equality</code></td><td>Equality and containment checks between types that can never be equal</td></tr>
+      <tr><td><code>strict_bytes</code></td><td><code>bytearray</code> or <code>memoryview</code> passed where <code>bytes</code> is expected</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Two settings you may see in older configurations are no longer needed. Error codes are shown by default, so <code>show_error_codes = true</code> changes nothing. Implicit <code>Optional</code> has been off by default since mypy 0.990: a parameter with a <code>None</code> default must be annotated <code>T | None</code> explicitly, whether or not you use <code>strict</code>.</p>
+
+  <p>For an existing codebase, start without <code>strict</code> and turn on individual flags. Move to <code>strict = true</code> once the code is fully annotated. For a new project, start strict from the first commit.</p>
+
+  <h2 id="gradual">Gradual typing: the practical adoption path</h2>
+
+  <p>mypy is designed for incremental adoption. You do not have to type-check everything or nothing.</p>
+
+  <p><strong>Step 1: quiet the missing imports.</strong> Some third-party libraries ship no type information. <code>--ignore-missing-imports</code> stops mypy from reporting them. Once things settle, prefer a per-module override with <code>ignore_missing_imports = true</code> for the specific libraries, so a typo in one of your own imports is still reported.</p>
+
+<pre><code class="language-bash">mypy myapp/ --ignore-missing-imports</code></pre>
+
+  <p><strong>Step 2: check one file or package at a time.</strong></p>
+
+<pre><code class="language-bash">mypy myapp/models.py   # one file
+mypy myapp/services/   # one directory</code></pre>
+
+  <p><strong>Step 3: mark known problems.</strong> Put a <code># type: ignore[code]</code> on the lines you cannot fix yet and move on. You can come back to them later.</p>
+
+  <p><strong>Step 4: turn on stricter flags one at a time.</strong></p>
+
+<pre><code class="language-bash">mypy myapp/ --disallow-untyped-defs  # annotate every function first
+mypy myapp/ --warn-return-any        # then this
+mypy myapp/ --strict                 # the goal</code></pre>
+
+  <p><strong>Step 5: track how much is still untyped.</strong></p>
+
+<pre><code class="language-bash">mypy myapp/ --any-exprs-report mypy-any/</code></pre>
+
+  <p>This writes <code>any-exprs.txt</code>, which lists for each module how many expressions have type <code>Any</code> and the percentage that do not, and <code>types-of-anys.txt</code>, which breaks the <code>Any</code> types down by cause. The coverage percentage is a useful number to track over time.</p>
+
+  <h2 id="stubs">Stub files: when libraries do not have types</h2>
+
+  <p>If a library does not ship type information, you have three options.</p>
+
+  <p><strong>1. Install a stub package.</strong> This is the most common case.</p>
+
+<pre><code class="language-bash">pip install pandas-stubs
+pip install types-requests
+pip install types-PyYAML</code></pre>
+
+  <p>Stubs for many popular libraries live in the typeshed project and are published to PyPI as <code>types-*</code> packages. Others, such as <code>pandas-stubs</code>, are maintained separately and use the <code>-stubs</code> suffix from PEP 561.</p>
+
+  <p><strong>2. Write your own stub file.</strong> A <code>.pyi</code> file holds only signatures. Put it in a directory on <code>MYPYPATH</code> (or the <code>mypy_path</code> setting):</p>
+
+<pre><code class="language-python"># stubs/legacy_http.pyi
+from typing import Any
+
+class Response:
+    status_code: int
+    text: str
+    def json(self) -&gt; Any: ...
+
+def get(url: str, **kwargs: Any) -&gt; Response: ...
+def post(url: str, **kwargs: Any) -&gt; Response: ...</code></pre>
+
+  <p><strong>3. Ship a <code>py.typed</code> marker.</strong> If you are a library author, add an empty <code>py.typed</code> file to your package (PEP 561). It tells mypy and other checkers that the package's inline annotations are meant to be used:</p>
+
+<pre><code class="language-plaintext">mypackage/
+    __init__.py
+    py.typed     # empty file: the package ships its own types
+    core.py</code></pre>
+
+  <h2 id="ci">Running mypy in CI</h2>
+
+<pre><code class="language-yaml"># GitHub Actions, in a uv project
+- name: Type check
+  run: uv run mypy myapp/ --strict
+
+# Or with uvx, without adding mypy to the project
+- name: Type check
+  run: uvx mypy myapp/ --strict</code></pre>
+
+  <p><code>uvx</code> runs mypy in its own isolated environment, so it cannot see your project's dependencies. It suits a package with no third-party imports; otherwise use <code>uv run</code>.</p>
+
+  <p>The same isolation applies to the pre-commit hook, which is why you list stub packages and plugins there as <code>additional_dependencies</code>:</p>
+
+<pre><code class="language-yaml"># .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.19.1
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-requests, pandas-stubs]</code></pre>
+
+  <h2 id="mypyc">mypyc: compile Python to C extensions</h2>
+
+  <p>This one is a real bonus. mypy comes with mypyc, a compiler that uses your type annotations to compile Python modules into C extensions. According to the mypyc documentation, existing annotated code is often 1.5x to 5x faster when compiled, and code tuned for mypyc can be 5x to 10x faster. Existing code often needs only minor changes to compile.</p>
+
+<pre><code class="language-bash">pip install "mypy[mypyc]"
+
+# Compile a module (you need a C compiler)
+mypyc myapp/hot_path.py
+
+# The extension is written next to the source, and Python imports
+# it in place of the .py file
+python -c "import myapp.hot_path"</code></pre>
+
+  <p>mypy itself is compiled with mypyc, which the mypyc documentation credits with a 4x speedup over interpreted Python. That is why <code>(compiled: yes)</code> in the version output matters. If you have CPU-bound Python code with complete type annotations, mypyc is worth a benchmark.</p>
+
+  <h2 id="alternatives">mypy and the alternatives</h2>
+
+  <p><strong>Pyright and Pylance.</strong> Pyright, from Microsoft, powers Pylance in VS Code and is mypy's strongest competitor. It is fast on large codebases and has the better editor integration out of the box. mypy has been around longer, has a larger plugin ecosystem, and comes with mypyc. Pyright has stricter defaults in some areas; mypy is more configurable for gradual adoption. Most teams pick one and stay with it.</p>
+
+  <p><strong>Pytype, from Google.</strong> Pytype infers more on its own and can check unannotated code, but Google has announced that Python 3.12 is the last version it will support. I would not start a new project on it.</p>
+
+  <p><strong>Pyre, from Meta.</strong> Pyre was built for very large monorepos. Meta has since replaced it with Pyrefly, its next-generation type checker and language server.</p>
+
+  <p><strong>Ruff.</strong> Ruff has lint rules about type annotations, but it is not a type checker. mypy and Ruff complement each other; use both.</p>
+
+  <p>My summary: mypy or Pyright for most teams. If you are on VS Code and want the best editor experience, Pyright and Pylance are excellent. If you want CI integration, framework plugins (Django, Pydantic) and mypyc, mypy has the richer ecosystem.</p>
+
+  <h2 id="plugins">mypy plugins: framework-aware type checking</h2>
+
+  <p>mypy supports plugins that teach it how a framework behaves at runtime:</p>
+
+<pre><code class="language-ini">[tool.mypy]
+plugins = [
+    "mypy_django_plugin.main",
+    "pydantic.mypy",
+]
+
+[tool.django-stubs]
+django_settings_module = "myproject.settings"</code></pre>
+
+  <ul>
+    <li><strong>django-stubs</strong> with its <code>mypy_django_plugin</code> understands model fields, <code>QuerySet</code> types, <code>request.user</code> and more. It needs to know your settings module, either from the <code>[tool.django-stubs]</code> section above or from <code>DJANGO_SETTINGS_MODULE</code>. Without it, much of the Django ORM looks like <code>Any</code> to mypy.</li>
+    <li><strong><code>pydantic.mypy</code></strong> ships inside Pydantic and makes mypy understand model fields, validators and the generated <code>__init__</code> signatures more precisely.</li>
+    <li><strong>SQLAlchemy</strong> has a plugin, <code>sqlalchemy.ext.mypy.plugin</code>, but it is deprecated and will be removed in SQLAlchemy 2.1. On SQLAlchemy 2.0, use the native <code>Mapped[]</code> annotations with <code>mapped_column()</code> instead; they need no plugin.</li>
+  </ul>
+
+  <h2 id="workflow">A real-world workflow</h2>
+
+  <p>Here is a small FastAPI project, fully typed and checked with the <code>strict</code> configuration above plus the Pydantic plugin.</p>
+
+<pre><code class="language-python"># myapp/models.py
+from datetime import datetime
+
+from pydantic import BaseModel
+
+
+class UserCreate(BaseModel):
+    name: str
+    email: str
+    age: int | None = None
+
+
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    created_at: datetime</code></pre>
+
+  <p>The database layer is a stand-in here; in a real project it wraps your ORM session. What matters to mypy is that <code>add_user</code> and <code>get_db</code> are annotated.</p>
+
+<pre><code class="language-python"># myapp/database.py
+from collections.abc import Iterator
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+
+
+@dataclass
+class UserRow:
+    id: int
+    name: str
+    email: str
+    age: int | None
+    created_at: datetime
+
+
+@dataclass
+class Session:
+    rows: list[UserRow] = field(default_factory=list)
+
+    def add_user(
+        self, *, name: str, email: str, age: int | None
+    ) -&gt; UserRow:
+        row = UserRow(
+            id=len(self.rows) + 1,
+            name=name,
+            email=email,
+            age=age,
+            created_at=datetime.now(timezone.utc),
+        )
+        self.rows.append(row)
+        return row
+
+
+def get_db() -&gt; Iterator[Session]:
+    yield Session()</code></pre>
+
+<pre><code class="language-python"># myapp/services.py
+from .database import Session
+from .models import UserCreate, UserResponse
+
+
+def create_user(db: Session, data: UserCreate) -&gt; UserResponse:
+    user = db.add_user(
+        name=data.name,
+        email=data.email,
+        age=data.age,
+    )
+    return UserResponse(
+        id=user.id,
+        name=user.name,
+        email=user.email,
+        created_at=user.created_at,
+    )</code></pre>
+
+<pre><code class="language-python"># myapp/app.py
+from typing import Annotated
+
+from fastapi import Depends, FastAPI
+
+from .database import Session, get_db
+from .models import UserCreate, UserResponse
+from .services import create_user
+
+app = FastAPI()
+
+
+@app.post("/users", response_model=UserResponse)
+def register(
+    data: UserCreate,
+    db: Annotated[Session, Depends(get_db)],
+) -&gt; UserResponse:
+    return create_user(db, data)</code></pre>
+
+<pre><code class="language-plaintext">$ mypy myapp
+Success: no issues found in 5 source files</code></pre>
+
+  <p>The dependency is written as <code>Annotated[Session, Depends(get_db)]</code>. The older form, <code>db=Depends(get_db)</code> with no annotation, fails under <code>--strict</code> with "Function is missing a type annotation for one or more arguments", and inside the function mypy would not know what <code>db</code> is.</p>
+
+  <p>The whole request and response path is now checked. If you change a field of <code>UserCreate</code>, for example make <code>name</code> optional, mypy tells you every place in the codebase that assumed it was always a <code>str</code>.</p>
+
+  <h2 id="commands">The commands you will actually use</h2>
+
+<pre><code class="language-bash"># Basic check
+mypy myapp/
+
+# Check a single file
+mypy myapp/services.py
+
+# Strict mode (recommended for new projects)
+mypy myapp/ --strict
+
+# Readable output with source lines and markers
+mypy myapp/ --pretty
+
+# Check against a specific Python version
+mypy myapp/ --python-version 3.12
+
+# Use the binary cache for faster incremental runs
+mypy myapp/ --fixed-format-cache
+
+# Show column numbers in messages
+mypy myapp/ --show-column-numbers
+
+# HTML report of type coverage (needs: pip install "mypy[reports]")
+mypy myapp/ --html-report mypy-report/
+# then open mypy-report/index.html in a browser</code></pre>
+
+  <h2 id="further">Where to go from here</h2>
+
+  <ul>
+    <li>The <a href="https://mypy.readthedocs.io/en/stable/">mypy documentation</a>. The type system reference section is excellent, and the page on <a href="https://mypy.readthedocs.io/en/stable/existing_code.html">using mypy with an existing codebase</a> expands on the adoption path above.</li>
+    <li><a href="https://peps.python.org/pep-0484/">PEP 484</a>, the original type hints PEP. It is readable and still the foundation.</li>
+    <li>The <a href="https://mypy-lang.blogspot.com/">mypy blog</a>, where each release is announced, and the <a href="https://mypy.readthedocs.io/en/stable/changelog.html">changelog</a> with the full release notes.</li>
+    <li><em>Robust Python</em> by Patrick Viafore (O'Reilly), a good book on type safety in everyday Python.</li>
+    <li><a href="https://github.com/python/typeshed">typeshed</a>, the shared repository of stubs for the standard library and many third-party packages.</li>
+    <li><a href="https://adamj.eu/">Adam Johnson's blog</a>, with many practical mypy tips, especially for Django.</li>
+  </ul>
+
+  <h2 id="close">Wrapping up</h2>
+
+  <p>Type checking looks like overhead until it saves you from a bad production bug. After that, you do not want to work without it.</p>
+
+  <p>mypy does not change how Python feels to write. You still write Python, just Python that is more honest about what it expects and what it returns, and mypy rewards that by catching a whole class of bugs before they reach your users.</p>
+
+  <p>With the speedups in 1.18, the fixed-format cache, and support for new typing PEPs, mypy is in good shape. The gradual adoption path means you can start today, even on an existing codebase. Start with one file: run <code>mypy yourfile.py</code> and see what it says.</p>
+
+  <h2 id="sources">Sources</h2>
+  <ul class="sources">
+    <li>mypy, <a href="https://mypy.readthedocs.io/en/stable/changelog.html">changelog</a> (release notes for 1.15, 1.16, 1.18 and 1.19) and <a href="https://pypi.org/project/mypy/1.19.1/">mypy 1.19.1 on PyPI</a></li>
+    <li>mypy, <a href="https://mypy.readthedocs.io/en/stable/command_line.html">command line</a> and <a href="https://mypy.readthedocs.io/en/stable/config_file.html">configuration file</a> reference</li>
+    <li>mypy, <a href="https://mypy.readthedocs.io/en/stable/installed_packages.html">using installed packages</a> (stub packages and <code>py.typed</code>)</li>
+    <li>mypyc, <a href="https://mypyc.readthedocs.io/en/latest/introduction.html">introduction</a></li>
+    <li>PEPs <a href="https://peps.python.org/pep-0484/">484</a>, <a href="https://peps.python.org/pep-0544/">544</a>, <a href="https://peps.python.org/pep-0561/">561</a>, <a href="https://peps.python.org/pep-0585/">585</a>, <a href="https://peps.python.org/pep-0586/">586</a>, <a href="https://peps.python.org/pep-0589/">589</a>, <a href="https://peps.python.org/pep-0604/">604</a>, <a href="https://peps.python.org/pep-0655/">655</a>, <a href="https://peps.python.org/pep-0688/">688</a>, <a href="https://peps.python.org/pep-0695/">695</a> and <a href="https://peps.python.org/pep-0800/">800</a></li>
+    <li>Google, <a href="https://github.com/google/pytype">pytype README</a>; Meta, <a href="https://github.com/facebook/pyre-check">pyre-check README</a></li>
+    <li>SQLAlchemy, <a href="https://docs.sqlalchemy.org/en/20/orm/extensions/mypy.html">Mypy / Pep-484 support for ORM mappings</a>; <a href="https://github.com/typeddjango/django-stubs">django-stubs</a></li>
+  </ul>
+</article>
+</main>
+
+<footer>
+  <p>Kapil Dagur · <a href="../../">kapildagur.github.io</a> · <a href="https://github.com/kapildagur">GitHub</a> · <a href="https://linkedin.com/in/kapildagur">LinkedIn</a></p>
+</footer>
+<script src="../assets/highlight/highlight.min.js" defer></script>
+<script src="../assets/highlight/dockerfile.min.js" defer></script>
+<script src="../assets/highlight/init.js" defer></script>
+</body>
+</html>

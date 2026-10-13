@@ -8,7 +8,7 @@
 <meta name="author" content="Kapil Dagur" />
 <meta name="theme-color" content="#080c10" />
 <link rel="canonical" href="https://kapildagur.github.io/" />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23080c10'/%3E%3Ctext x='32' y='44' font-family='monospace' font-size='28' font-weight='700' fill='%2300e6a0' text-anchor='middle'%3EKD%3C/text%3E%3C/svg%3E" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23080c10'/%3E%3Cg fill='none' stroke='%2300e6a0' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 7c-3 0-4 1.5-4 4v5c0 2-1 3-3 3c2 0 3 1 3 3v5c0 2.5 1 4 4 4'/%3E%3Cpath d='M30 7c3 0 4 1.5 4 4v5c0 2 1 3 3 3c-2 0-3 1-3 3v5c0 2.5-1 4-4 4'/%3E%3C/g%3E%3Ctext x='20' y='25' text-anchor='middle' font-family='sans-serif' font-weight='800' font-size='12' fill='%23e2e8f0'%3EKD%3C/text%3E%3C/svg%3E" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://kapildagur.github.io/" />
 <meta property="og:title" content="Kapil Dagur | Backend Engineer" />
@@ -160,14 +160,10 @@
     border-bottom: 1px solid var(--border);
   }
 
-  .nav-logo {
-    font-family: var(--font-display);
-    font-size: 18px;
-    font-weight: 800;
-    color: var(--green);
-    letter-spacing: -0.5px;
-  }
-  .nav-logo span { color: var(--text-muted); font-weight: 400; }
+  /* Logo: KD in code braces, the same as the favicon. */
+  .nav-logo { display: inline-flex; line-height: 0; border-radius: 8px; }
+
+  .nav-logo:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 
   .nav-links {
     display: flex;
@@ -826,12 +822,7 @@
     font-size: 11px;
     color: var(--text-dim);
   }
-  footer .footer-brand {
-    font-family: var(--font-display);
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--green);
-  }
+  footer .footer-brand { display: inline-flex; line-height: 0; }
 
 
 
@@ -911,7 +902,7 @@
 
 <!-- NAV -->
 <nav>
-  <div class="nav-logo">KD<span>.dev</span></div>
+  <a class="nav-logo" href="#main" aria-label="Kapil Dagur, home"><svg class="logo-mark" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true" focusable="false"><g fill="none" stroke="#00e6a0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6c-3 0-4 1.5-4 4v5c0 2-1 3-3 3c2 0 3 1 3 3v5c0 2.5 1 4 4 4" transform="translate(1 1)"/><path d="M31 6c3 0 4 1.5 4 4v5c0 2 1 3 3 3c-2 0-3 1-3 3v5c0 2.5-1 4-4 4" transform="translate(-1 1)"/></g><text x="20" y="24.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="11" fill="#e2e8f0">KD</text></svg></a>
   <button class="nav-toggle" id="navToggle" type="button"
           aria-label="Open navigation" aria-expanded="false" aria-controls="navLinks">☰</button>
   <ul class="nav-links" id="navLinks">
@@ -920,6 +911,7 @@
     <li><a href="#skills">Skills</a></li>
     <li><a href="#education">Education</a></li>
     <li><a href="#contact">Contact</a></li>
+    <li><a href="blog/">Blog</a></li>
   </ul>
 </nav>
 
@@ -1233,7 +1225,7 @@
 
 <footer>
   <p>© 2026 Kapil Dagur</p>
-  <span class="footer-brand">KD.dev</span>
+  <span class="footer-brand"><svg class="logo-mark" viewBox="0 0 40 40" width="30" height="30" aria-hidden="true" focusable="false"><g fill="none" stroke="#00e6a0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6c-3 0-4 1.5-4 4v5c0 2-1 3-3 3c2 0 3 1 3 3v5c0 2.5 1 4 4 4" transform="translate(1 1)"/><path d="M31 6c3 0 4 1.5 4 4v5c0 2 1 3 3 3c-2 0-3 1-3 3v5c0 2.5-1 4-4 4" transform="translate(-1 1)"/></g><text x="20" y="24.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="11" fill="#e2e8f0">KD</text></svg></span>
 </footer>
 
 <script>

@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pytest: the Python testing framework that makes you want to write tests | Kapil Dagur</title>
+<meta name="description" content="A practical guide to pytest, from your first assert to fixtures, parametrize, mocking, plugins and the changes in pytest 9.0: subtests, native TOML configuration and strict mode.">
+<meta name="author" content="Kapil Dagur">
+<link rel="canonical" href="https://kapildagur.github.io/blog/pytest-guide/">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kapildagur.github.io/blog/pytest-guide/">
+<meta property="og:title" content="pytest: the Python testing framework that makes you want to write tests">
+<meta property="og:description" content="From your first assert to fixtures, parametrize, mocking, plugins and what is new in pytest 9.0.">
+<meta property="og:image" content="https://github.com/kapildagur.png">
+<meta property="article:published_time" content="2026-03-07">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23080c10'/%3E%3Cg fill='none' stroke='%2300e6a0' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 7c-3 0-4 1.5-4 4v5c0 2-1 3-3 3c2 0 3 1 3 3v5c0 2.5 1 4 4 4'/%3E%3Cpath d='M30 7c3 0 4 1.5 4 4v5c0 2 1 3 3 3c-2 0-3 1-3 3v5c0 2.5-1 4-4 4'/%3E%3C/g%3E%3Ctext x='20' y='25' text-anchor='middle' font-family='sans-serif' font-weight='800' font-size='12' fill='%23e2e8f0'%3EKD%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../blog.css?v=9">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<nav class="site-nav" aria-label="Site">
+  <a class="logo" href="../../" aria-label="Kapil Dagur, home"><svg class="logo-mark" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true" focusable="false"><g fill="none" stroke="#00e6a0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6c-3 0-4 1.5-4 4v5c0 2-1 3-3 3c2 0 3 1 3 3v5c0 2.5 1 4 4 4" transform="translate(1 1)"/><path d="M31 6c3 0 4 1.5 4 4v5c0 2 1 3 3 3c-2 0-3 1-3 3v5c0 2.5-1 4-4 4" transform="translate(-1 1)"/></g><text x="20" y="24.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="11" fill="#e2e8f0">KD</text></svg></a>
+  <ul>
+    <li><a href="../../">Home</a></li>
+    <li><a href="../" aria-current="page">Blog</a></li>
+  </ul>
+</nav>
+
+<main id="main">
+<article>
+  <p class="post-meta">7 Mar 2026 · 15 min read · Python, Testing</p>
+  <h1>pytest: the Python testing framework that makes you want to write tests</h1>
+  <p class="lede">From your first <code>assert</code> to fixtures, parametrize, mocking, plugins and the changes that arrived in pytest 9.0. A practical guide that sticks to what you will use.</p>
+  <p class="post-meta">Originally published on <a href="https://kapildagur.medium.com/pytest-the-python-testing-framework-that-actually-makes-you-want-to-write-tests-1c0ea4bbe464">Medium</a>; revised for this site.</p>
+
+  <p>Most of us have skipped writing tests at some point because the setup felt like more work than the feature. You write a function, it works in the REPL, you ship it and move on. Two weeks later something breaks somewhere unrelated, and you spend two hours finding out why.</p>
+
+  <p>That is the real cost of untested code. The bugs you find straight away are cheap. The ones that surface later, in places you did not expect, are the ones that eat your time.</p>
+
+  <p>pytest removes most of the friction between "I should write tests" and writing them. There are no base classes to inherit, no <code>self.assertEqual</code>, no ceremony. You write plain Python functions with plain <code>assert</code> statements, and pytest gives you readable failures, reusable setup and a test suite that stays manageable as it grows.</p>
+
+  <p>This guide is written against pytest 9.0.2, released in December 2025. It requires Python 3.10 or later.</p>
+
+  <h2 id="why">Why pytest over unittest</h2>
+
+  <p>Python ships with <code>unittest</code> in the standard library, so why install anything else? Here is the same pair of tests written both ways.</p>
+
+<pre><code class="language-python"># unittest style
+import unittest
+
+
+class TestMath(unittest.TestCase):
+    def test_addition(self):
+        self.assertEqual(1 + 1, 2)
+
+    def test_type_error(self):
+        with self.assertRaises(TypeError):
+            "string" + 1</code></pre>
+
+<pre><code class="language-python"># pytest style
+import pytest
+
+
+def test_addition():
+    assert 1 + 1 == 2
+
+
+def test_type_error():
+    with pytest.raises(TypeError):
+        "string" + 1</code></pre>
+
+  <p>The pytest version is just Python: no class inheritance and no assertion methods to memorise. When something fails, the report tells you far more than unittest does, as the next sections show.</p>
+
+  <p>pytest also runs existing unittest-style tests without changes, so switching does not mean rewriting your suite.</p>
+
+  <h2 id="install">Installation and first run</h2>
+
+<pre><code class="language-bash">pip install pytest
+# or, with uv, as a development dependency
+uv add --dev pytest</code></pre>
+
+  <p>Check the version:</p>
+
+<pre><code class="language-bash">pytest --version
+# pytest 9.0.2</code></pre>
+
+  <p>Create your first test file:</p>
+
+<pre><code class="language-python"># test_calculator.py
+def add(a, b):
+    return a + b
+
+
+def test_add():
+    assert add(2, 3) == 5
+
+
+def test_add_negative():
+    assert add(-1, 1) == 0
+
+
+def test_add_floats():
+    assert add(1.5, 2.5) == 4.0</code></pre>
+
+  <p>Run it:</p>
+
+<pre><code class="language-bash">pytest test_calculator.py
+# or, to run everything pytest can find
+pytest</code></pre>
+
+  <p>pytest discovers files named <code>test_*.py</code> or <code>*_test.py</code>, and inside them any function whose name starts with <code>test</code>. You need no configuration to get started.</p>
+
+  <h2 id="output">Reading the output</h2>
+
+  <p>Failure messages are one of pytest's best features. When a test fails, pytest does not just say that it failed; it shows you the values involved.</p>
+
+<pre><code class="language-python">def test_add_wrong():
+    assert add(2, 2) == 5</code></pre>
+
+  <p>Running this with pytest 9.0.2 prints:</p>
+
+<pre><code class="language-plaintext">    def test_add_wrong():
+&gt;       assert add(2, 2) == 5
+E       assert 4 == 5
+E        +  where 4 = add(2, 2)</code></pre>
+
+  <p>Compare that with unittest's <code>AssertionError: 4 != 5</code>. pytest rewrites the <code>assert</code> statement so it can show each part of the expression, including the call that produced the <code>4</code>. For dictionaries, lists and other containers it goes further and reports which items differ.</p>
+
+  <h2 id="fixtures">Fixtures: the heart of pytest</h2>
+
+  <p>If you learn one pytest concept in depth, make it fixtures. They are what keep tests clean, reusable and maintainable.</p>
+
+  <p>A fixture is a function decorated with <code>@pytest.fixture</code>. Any test that names it as a parameter receives its return value.</p>
+
+<pre><code class="language-python">import pytest
+
+
+@pytest.fixture
+def sample_user():
+    return {"name": "Alice", "age": 30, "email": "alice@example.com"}
+
+
+def test_user_name(sample_user):
+    assert sample_user["name"] == "Alice"
+
+
+def test_user_email(sample_user):
+    assert sample_user["email"] == "alice@example.com"</code></pre>
+
+  <p>pytest sees that <code>test_user_name</code> has a parameter called <code>sample_user</code>, finds the fixture with that name, runs it and passes the result in. Each test gets its own fresh dictionary.</p>
+
+  <h3>Setup and teardown with yield</h3>
+
+  <p>To open a resource before a test and close it afterwards, use <code>yield</code>:</p>
+
+<pre><code class="language-python">@pytest.fixture
+def db_connection():
+    conn = create_database_connection()  # setup
+    yield conn                           # the test runs here
+    conn.close()                         # teardown</code></pre>
+
+  <p>The code after <code>yield</code> runs once the test finishes, whether it passed or failed, as long as the setup before <code>yield</code> completed. This replaces <code>setUp</code> and <code>tearDown</code> from unittest, and it reads better because setup and teardown sit together in one function.</p>
+
+  <h3>Fixture scope: how long a fixture lives</h3>
+
+  <p>By default, a fixture is created fresh for every test. The <code>scope</code> argument changes that:</p>
+
+<pre><code class="language-python">@pytest.fixture(scope="module")  # once per test file
+def expensive_setup():
+    return initialize_heavy_resource()
+
+
+@pytest.fixture(scope="session")  # once for the whole test run
+def global_config():
+    return load_config()</code></pre>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Scope</th><th>Created</th><th>Destroyed</th></tr></thead>
+    <tbody>
+      <tr><td><code>function</code> (default)</td><td>Before each test</td><td>After each test</td></tr>
+      <tr><td><code>class</code></td><td>Once per test class</td><td>After the last test in the class</td></tr>
+      <tr><td><code>module</code></td><td>Once per test file</td><td>After the last test in the file</td></tr>
+      <tr><td><code>package</code></td><td>Once per package</td><td>After the last test in the package</td></tr>
+      <tr><td><code>session</code></td><td>Once per pytest run</td><td>At the end of the run</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Use session scope for things that are expensive to create, such as database connections or API clients. Use function scope for anything that must be isolated between tests.</p>
+
+  <h3>Fixtures that use other fixtures</h3>
+
+  <p>A fixture can depend on other fixtures. Add them as parameters:</p>
+
+<pre><code class="language-python">@pytest.fixture
+def db():
+    return setup_database()
+
+
+@pytest.fixture
+def logged_in_user(db):  # pytest injects the db fixture
+    user = db.create_user("alice")
+    db.login(user)
+    return user
+
+
+def test_user_dashboard(logged_in_user):
+    assert logged_in_user.is_logged_in</code></pre>
+
+  <p>pytest works out the dependency graph for you. Being able to compose fixtures like this is what keeps setup manageable in a large suite.</p>
+
+  <h3>conftest.py: sharing fixtures across files</h3>
+
+  <p>When several test files need the same fixtures, put them in a <code>conftest.py</code> file. pytest finds it on its own, so the test files do not import anything.</p>
+
+<pre><code class="language-plaintext">my_project/
++-- src/
+|   +-- ...
++-- tests/
+    +-- conftest.py          # shared fixtures live here
+    +-- test_calculator.py
+    +-- test_user.py
+    +-- test_products.py</code></pre>
+
+<pre><code class="language-python"># tests/conftest.py
+import pytest
+
+
+@pytest.fixture(scope="session")
+def api_client():
+    client = create_test_client()
+    yield client
+    client.teardown()</code></pre>
+
+  <p>Every test in every file under that directory can now take <code>api_client</code> as a parameter.</p>
+
+  <h2 id="parametrize">Parametrize: many inputs, one test</h2>
+
+  <p>This is one of pytest's most used features. Instead of copying the same test for each set of values:</p>
+
+<pre><code class="language-python"># the repetitive way
+def test_add_positive():
+    assert add(1, 2) == 3
+
+
+def test_add_zero():
+    assert add(0, 5) == 5
+
+
+def test_add_negative():
+    assert add(-1, 1) == 0</code></pre>
+
+  <p>use <code>@pytest.mark.parametrize</code>:</p>
+
+<pre><code class="language-python"># the pytest way
+@pytest.mark.parametrize("a, b, expected", [
+    (1, 2, 3),
+    (0, 5, 5),
+    (-1, 1, 0),
+    (100, -50, 50),
+])
+def test_add(a, b, expected):
+    assert add(a, b) == expected</code></pre>
+
+  <p>This runs four separate tests, each with its own result. If the third case fails, the other three still pass and are reported as such.</p>
+
+  <p>You can also parametrize over more complex objects, give individual cases an ID or a mark with <code>pytest.param</code>, and combine parametrize with fixtures.</p>
+
+  <h2 id="subtests">Subtests, new in pytest 9.0</h2>
+
+  <p>pytest 9.0, released in November 2025, brought the <code>pytest-subtests</code> plugin into core as the built-in <code>subtests</code> fixture. Subtests are an alternative to parametrize for cases you only know at run time.</p>
+
+<pre><code class="language-python">def test_all_users_have_emails(subtests):
+    users = fetch_users_from_db()  # any number of users
+
+    for user in users:
+        with subtests.test(
+            msg=f"User {user.name} missing email",
+            name=user.name,
+        ):
+            assert user.email is not None</code></pre>
+
+  <p>With <code>@pytest.mark.parametrize</code>, every case must be known when pytest collects the tests. Subtests let you create the cases while the test runs, which is what you need when you iterate over database records, API responses or any other run-time data.</p>
+
+  <p>If one subtest fails, the others still run and each failure is reported on its own line. You get one logical test with a separate result for each case. The pytest changelog marks the feature as experimental in 9.0, so expect its details to change in later releases.</p>
+
+  <h2 id="marks">Marking tests: skip, xfail and custom marks</h2>
+
+  <h3>Skip a test</h3>
+
+<pre><code class="language-python">import sys
+
+import pytest
+
+
+@pytest.mark.skip(reason="Not implemented yet")
+def test_future_feature():
+    assert do_something_not_ready()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux only")
+def test_linux_specific():
+    assert check_linux_thing()</code></pre>
+
+  <h3>Expected failures with xfail</h3>
+
+<pre><code class="language-python">@pytest.mark.xfail(reason="Known bug, tracked in issue #42")
+def test_known_broken():
+    assert broken_function() == "expected"</code></pre>
+
+  <p>If the test fails, pytest reports it as <code>xfail</code>, an expected failure that raises no alarm. If it passes, pytest reports <code>xpass</code>, an unexpected pass that tells you the mark is out of date. With <code>strict_xfail = true</code> in your configuration, an unexpected pass fails the run, which is the right behaviour for most projects. <code>strict_xfail</code> was added in 9.0 as an alias for the older <code>xfail_strict</code> option, and both names work.</p>
+
+  <h3>Custom marks</h3>
+
+<pre><code class="language-ini"># Declare the marks in pyproject.toml:
+# [tool.pytest]
+# markers = [
+#     "slow: marks tests as slow",
+#     "integration: requires external services",
+# ]
+
+
+@pytest.mark.slow
+def test_something_heavy():
+    ...
+
+
+@pytest.mark.integration
+def test_against_real_api():
+    ...</code></pre>
+
+  <p>Then select tests by mark:</p>
+
+<pre><code class="language-bash">pytest -m slow          # only slow tests
+pytest -m "not slow"    # skip slow tests, handy for quick local runs
+pytest -m integration   # only integration tests</code></pre>
+
+  <p>This pattern pays off in CI: run the fast unit tests on every push and the integration tests only on merges to main.</p>
+
+  <h2 id="exceptions">Testing exceptions</h2>
+
+<pre><code class="language-python">def divide(a, b):
+    if b == 0:
+        raise ValueError("Cannot divide by zero")
+    return a / b
+
+
+def test_divide_by_zero():
+    with pytest.raises(ValueError, match="Cannot divide by zero"):
+        divide(10, 0)
+
+
+def test_exception_details():
+    with pytest.raises(ValueError) as exc_info:
+        divide(10, 0)
+    assert "zero" in str(exc_info.value)</code></pre>
+
+  <p>The <code>match</code> argument is a regular expression that is searched for in the exception message. It is a small detail that stops a test from passing because the right exception type was raised for the wrong reason.</p>
+
+  <h2 id="mocking">Mocking with monkeypatch and unittest.mock</h2>
+
+  <h3>monkeypatch, built into pytest</h3>
+
+<pre><code class="language-python">def test_env_variable(monkeypatch):
+    monkeypatch.setenv("API_KEY", "test-key-123")
+    assert get_api_key() == "test-key-123"
+
+
+class MockResponse:
+    status_code = 200
+
+    def json(self):
+        return {"ok": True}
+
+
+def test_patch_function(monkeypatch):
+    monkeypatch.setattr(
+        "mymodule.requests.get", lambda url: MockResponse()
+    )
+    result = fetch_data("https://api.example.com")
+    assert result is not None</code></pre>
+
+  <p><code>monkeypatch</code> undoes every change when the test finishes, so there is nothing to clean up.</p>
+
+  <h3>unittest.mock, for more complex cases</h3>
+
+<pre><code class="language-python">from unittest.mock import patch
+
+
+def test_email_sent():
+    with patch("myapp.email.send_email") as mock_send:
+        mock_send.return_value = True
+        result = register_user("alice@example.com")
+        mock_send.assert_called_once_with(
+            "alice@example.com", subject="Welcome!"
+        )
+        assert result is True</code></pre>
+
+  <p>Both work well with pytest. <code>monkeypatch</code> is lighter and reads cleanly for simple replacements; <code>unittest.mock</code> gives you call recording and assertions for more involved interactions.</p>
+
+  <h2 id="toml">Native TOML configuration, new in pytest 9.0</h2>
+
+  <p>Before pytest 9.0, configuring pytest in <code>pyproject.toml</code> meant the <code>[tool.pytest.ini_options]</code> table, an INI compatibility mode in which every value was read as a string. pytest 9.0 adds a native <code>[tool.pytest]</code> table that uses real TOML types:</p>
+
+<pre><code class="language-ini"># pyproject.toml, native TOML configuration (pytest 9.0+)
+[tool.pytest]
+minversion = "9.0"
+testpaths = ["tests", "integration"]
+addopts = ["-ra", "-q"]
+log_level = "INFO"
+
+# One switch for all strictness options, new in 9.0
+strict = true
+
+markers = [
+    "slow: marks tests as slow (deselect with -m 'not slow')",
+    "integration: marks tests requiring external services",
+]</code></pre>
+
+  <p>Lists are TOML arrays now, not space-separated strings. <code>markers</code> is still a list of <code>"name: description"</code> strings; a <code>[tool.pytest.markers]</code> table is rejected with a type error.</p>
+
+  <p>The old <code>[tool.pytest.ini_options]</code> table still works, but you cannot use both in the same file; pytest refuses to start if it finds both. Moving across is mostly a matter of turning strings into lists.</p>
+
+  <p>If you would rather keep pytest's settings out of <code>pyproject.toml</code>, pytest 9.0 also reads a standalone <code>pytest.toml</code> or <code>.pytest.toml</code> file, with the settings under a <code>[pytest]</code> table.</p>
+
+  <h2 id="strict">Strict mode, new in pytest 9.0</h2>
+
+  <p>pytest 9.0 gathers the individual strictness options under one <code>strict</code> option:</p>
+
+<pre><code class="language-ini">[tool.pytest]
+strict = true  # turns on all of these:
+               # strict_config: unknown config options are errors
+               # strict_markers: undeclared markers are errors
+               # strict_parametrization_ids: duplicate IDs are errors
+               # strict_xfail: an unexpected pass fails the run</code></pre>
+
+  <p>You can still set any of the four options on its own to override what <code>strict</code> chooses. For a mature project this is good practice. Undeclared markers, duplicate parametrize IDs and misspelled options used to cause quiet, confusing behaviour; now they stop the run with a clear error. Turn it on, fix what it reports, and your suite will be cleaner for it.</p>
+
+  <div class="callout">
+    <p><code>strict_config</code> also rejects options that belong to plugins you have not installed. For example, <code>timeout = 30</code> comes from the <code>pytest-timeout</code> plugin; without the plugin, pytest stops with <code>Unknown config option: timeout</code>.</p>
+  </div>
+
+  <h2 id="tmp-path">Temporary files and directories</h2>
+
+  <p>pytest provides built-in fixtures for working with the file system safely:</p>
+
+<pre><code class="language-python">def test_write_and_read(tmp_path):
+    # tmp_path is a pathlib.Path to a unique temporary directory
+    file = tmp_path / "output.txt"
+    file.write_text("hello pytest")
+    assert file.read_text() == "hello pytest"
+
+
+def test_multiple_files(tmp_path):
+    (tmp_path / "data").mkdir()
+    config = tmp_path / "config.json"
+    config.write_text('{"debug": true}')
+    assert config.exists()</code></pre>
+
+  <p>Each test gets its own directory, so tests cannot trip over each other's files. pytest does not delete the directory as soon as the test ends: by default it keeps the temporary directories of the last three runs, which is useful when you want to inspect what a failing test wrote. The <code>tmp_path_retention_count</code> and <code>tmp_path_retention_policy</code> options change that. <code>tmp_path_factory</code> is the session-scoped counterpart, for fixtures that need to create temporary directories of their own.</p>
+
+  <h2 id="commands">Running tests: the commands you will use</h2>
+
+<pre><code class="language-bash"># Run all tests
+pytest
+
+# Run one file
+pytest tests/test_calculator.py
+
+# Run one test function
+pytest tests/test_calculator.py::test_add_negative
+
+# Run one parametrized case
+pytest "tests/test_calculator.py::test_add[1-2-3]"
+
+# Verbose output, one line per test
+pytest -v
+
+# Extra summary for all outcomes except passes
+pytest -ra
+
+# Stop after the first failure
+pytest -x
+
+# Stop after N failures
+pytest --maxfail=3
+
+# Run only tests whose names match an expression
+pytest -k "user and not admin"
+
+# Run marked tests
+pytest -m slow
+
+# Show print() output instead of capturing it
+pytest -s
+
+# Re-run only the tests that failed last time
+pytest --lf
+
+# Run last time's failures first, then the rest
+pytest --ff</code></pre>
+
+  <p><code>--lf</code> (last failed) is one of the most useful flags in day-to-day work. After fixing a bug, you want to re-run the tests that were failing straight away, not wait for the whole suite.</p>
+
+  <h2 id="coverage">Coverage: are you testing your code</h2>
+
+<pre><code class="language-bash">pip install pytest-cov
+
+pytest --cov=myapp --cov-report=term-missing
+
+# HTML report, easier to browse on larger projects
+pytest --cov=myapp --cov-report=html
+open htmlcov/index.html  # macOS; use xdg-open on Linux</code></pre>
+
+  <p>The HTML report lets you click into each file and see exactly which lines were not run. That tells you far more than a single percentage.</p>
+
+<pre><code class="language-ini"># pyproject.toml: set a minimum coverage threshold
+[tool.coverage.report]
+fail_under = 80</code></pre>
+
+  <p>With this in place, <code>pytest --cov=myapp</code> fails when total coverage drops below 80 percent, which makes a simple gate for CI.</p>
+
+  <h2 id="parallel">Running tests in parallel</h2>
+
+<pre><code class="language-bash">pip install pytest-xdist
+
+pytest -n auto  # one worker per CPU core
+pytest -n 4     # exactly 4 workers</code></pre>
+
+  <p>On a large suite this can cut run time considerably; how much depends on the number of cores and how CPU-bound your tests are. Tests must be independent of each other, with no shared state, for this to work. That is good practice anyway.</p>
+
+  <h2 id="async">Testing async code</h2>
+
+<pre><code class="language-bash">pip install pytest-asyncio</code></pre>
+
+<pre><code class="language-python">import pytest
+
+
+@pytest.mark.asyncio
+async def test_async_function():
+    result = await fetch_data_async()
+    assert result is not None</code></pre>
+
+  <p>Or turn on auto mode in <code>pyproject.toml</code>:</p>
+
+<pre><code class="language-ini">[tool.pytest]
+asyncio_mode = "auto"</code></pre>
+
+  <p>With <code>asyncio_mode = "auto"</code>, pytest-asyncio treats every <code>async def</code> test as an asyncio test, so you do not need the decorator.</p>
+
+  <h2 id="plugins">The plugins worth knowing</h2>
+
+  <p>pytest has a large plugin ecosystem. These are the ones I reach for most:</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Plugin</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><code>pytest-cov</code></td><td>Code coverage reports</td></tr>
+      <tr><td><code>pytest-xdist</code></td><td>Runs tests in parallel</td></tr>
+      <tr><td><code>pytest-asyncio</code></td><td>Tests <code>async</code>/<code>await</code> code</td></tr>
+      <tr><td><code>pytest-mock</code></td><td>A <code>mocker</code> fixture that wraps <code>unittest.mock</code> and undoes patches after each test</td></tr>
+      <tr><td><code>pytest-django</code></td><td>Django integration: database access, test client and more</td></tr>
+      <tr><td><code>pytest-httpx</code></td><td>Mocks requests made with <code>httpx</code></td></tr>
+      <tr><td><code>pytest-benchmark</code></td><td>Benchmarks code inside tests</td></tr>
+      <tr><td><code>pytest-randomly</code></td><td>Shuffles test order to expose hidden dependencies between tests</td></tr>
+      <tr><td><code>pytest-timeout</code></td><td>Fails tests that run too long</td></tr>
+      <tr><td><code>pytest-snapshot</code></td><td>Snapshot testing for complex output</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="layout">A real-world test layout</h2>
+
+  <p>Here is what a well-organised pytest project looks like:</p>
+
+<pre><code class="language-plaintext">my_project/
++-- src/
+|   +-- myapp/
+|       +-- models.py
+|       +-- services.py
+|       +-- utils.py
++-- tests/
+|   +-- conftest.py          # session and module fixtures
+|   +-- unit/
+|   |   +-- conftest.py      # unit test fixtures
+|   |   +-- test_models.py
+|   |   +-- test_utils.py
+|   +-- integration/
+|   |   +-- conftest.py      # integration fixtures (real DB, etc.)
+|   |   +-- test_api.py
+|   +-- e2e/
+|       +-- test_flows.py
++-- pyproject.toml</code></pre>
+
+<pre><code class="language-ini"># pyproject.toml
+[tool.pytest]
+testpaths = ["tests"]
+addopts = ["-ra", "-q"]
+strict = true
+
+markers = [
+    "unit: fast isolated unit tests",
+    "integration: tests requiring database/external services",
+    "e2e: full end-to-end tests",
+]</code></pre>
+
+<pre><code class="language-bash"># Different runs for different purposes
+pytest -m unit                   # quick local feedback
+pytest -m "unit or integration"  # before pushing
+pytest                           # full suite in CI</code></pre>
+
+  <h2 id="alternatives">pytest and the alternatives</h2>
+
+  <p><strong>unittest.</strong> It is in the standard library and it is solid, and pytest can run its tests. But the class-based structure, the assertion methods and the thinner failure messages make tests harder to write and maintain. On developer experience, pytest wins clearly.</p>
+
+  <p><strong>nose and nose2.</strong> nose was the popular alternative to pytest for years, but it is unmaintained: its last release, 1.3.7, dates from 2015. nose2 is still maintained but never gained the same community momentum. pytest is the default choice.</p>
+
+  <p><strong>Hypothesis.</strong> Hypothesis is not a competitor. It is a property-based testing library that works with pytest. Instead of listing exact inputs, you describe properties your function should have, and Hypothesis generates inputs that try to break them. It pairs well with pytest and is worth exploring once you are comfortable with the basics.</p>
+
+  <p><strong>Robot Framework.</strong> Robot Framework is built for acceptance testing and uses a keyword-driven syntax rather than Python code. It has its place in QA automation. For unit and integration tests in a Python codebase, pytest is the more natural fit.</p>
+
+  <h2 id="next">Where to go from here</h2>
+
+  <ul>
+    <li>The <a href="https://docs.pytest.org/">official pytest documentation</a> is excellent, especially the how-to guides.</li>
+    <li><em>Python Testing with pytest</em> by Brian Okken (<a href="https://pragprog.com/titles/bopytest2/python-testing-with-pytest-second-edition/">second edition, Pragmatic Bookshelf</a>) is the standard book on the subject.</li>
+    <li>The <a href="https://docs.pytest.org/en/stable/reference/plugin_list.html">pytest plugin list</a> indexes more than a thousand plugins.</li>
+    <li><a href="https://github.com/pytest-dev/pytest/discussions">pytest GitHub Discussions</a> is active and welcoming.</li>
+    <li>Adam Johnson's blog at <a href="https://adamj.eu/">adamj.eu</a> has many practical pytest tips, especially for Django projects.</li>
+  </ul>
+
+  <h2 id="close">Wrapping up</h2>
+
+  <p>The idea behind pytest is simple: tests should be easy to write and easy to read, and when they fail, the failure should be easy to understand. Fixtures, parametrize, plugins and the rest of the ecosystem all serve that idea.</p>
+
+  <p>The barrier to entry is low. You write Python functions, you use <code>assert</code>, and pytest does the rest. The ceiling is high too: the same framework scales to thousands of tests with complex setup, parallel runs and enforced coverage.</p>
+
+  <p>pytest 9.0 added subtests, native TOML configuration and a single strict mode. None of them change how you write a basic test, but each removes a small annoyance from a tool that was already good.</p>
+
+  <p>If you have been putting off a proper test suite, this is a good week to start. You will thank yourself the next time something breaks late at night six months from now. If you have questions, I am happy to help.</p>
+
+  <h2 id="sources">Sources</h2>
+  <ul class="sources">
+    <li>pytest, <a href="https://docs.pytest.org/en/stable/changelog.html">changelog</a> (9.0.0 released 5 November 2025, 9.0.2 released 6 December 2025)</li>
+    <li>PyPI, <a href="https://pypi.org/project/pytest/9.0.2/">pytest 9.0.2</a> (requires Python 3.10 or later)</li>
+    <li>pytest, <a href="https://docs.pytest.org/en/stable/how-to/fixtures.html">How to use fixtures</a> and <a href="https://docs.pytest.org/en/stable/reference/reference.html">API reference</a></li>
+    <li>pytest, <a href="https://docs.pytest.org/en/stable/how-to/parametrize.html">How to parametrize fixtures and test functions</a> and <a href="https://docs.pytest.org/en/stable/how-to/subtests.html">How to use subtests</a></li>
+    <li>pytest, <a href="https://docs.pytest.org/en/stable/how-to/skipping.html">How to use skip and xfail</a> and <a href="https://docs.pytest.org/en/stable/how-to/mark.html">How to mark test functions with attributes</a></li>
+    <li>pytest, <a href="https://docs.pytest.org/en/stable/how-to/assert.html">How to write and report assertions in tests</a></li>
+    <li>pytest, <a href="https://docs.pytest.org/en/stable/how-to/monkeypatch.html">How to monkeypatch/mock modules and environments</a></li>
+    <li>pytest, <a href="https://docs.pytest.org/en/stable/how-to/tmp_path.html">How to use temporary directories and files in tests</a></li>
+    <li>pytest, <a href="https://docs.pytest.org/en/stable/reference/customize.html">Configuration</a> and <a href="https://docs.pytest.org/en/stable/how-to/usage.html">How to invoke pytest</a></li>
+    <li>pytest, <a href="https://docs.pytest.org/en/stable/how-to/unittest.html">How to use unittest-based tests with pytest</a></li>
+    <li>Plugin documentation: <a href="https://pytest-cov.readthedocs.io/en/latest/">pytest-cov</a>, <a href="https://pytest-xdist.readthedocs.io/en/stable/">pytest-xdist</a>, <a href="https://pytest-asyncio.readthedocs.io/en/stable/">pytest-asyncio</a></li>
+    <li><a href="https://hypothesis.readthedocs.io/">Hypothesis documentation</a></li>
+  </ul>
+</article>
+</main>
+
+<footer>
+  <p>Kapil Dagur · <a href="../../">kapildagur.github.io</a> · <a href="https://github.com/kapildagur">GitHub</a> · <a href="https://linkedin.com/in/kapildagur">LinkedIn</a></p>
+</footer>
+<script src="../assets/highlight/highlight.min.js" defer></script>
+<script src="../assets/highlight/dockerfile.min.js" defer></script>
+<script src="../assets/highlight/init.js" defer></script>
+</body>
+</html>
