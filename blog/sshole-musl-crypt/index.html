@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SSHole: how a crypt() error let disabled passwords log in to sshd on musl | Kapil Dagur</title>
+<meta name="description" content="CVE-2026-123158 explained from the source: why OpenSSH before 10.6p2 on musl without PAM accepted a long password for accounts with no password, how the fix works, and how to check your systems.">
+<meta name="author" content="Kapil Dagur">
+<link rel="canonical" href="https://kapildagur.github.io/blog/sshole-musl-crypt/">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kapildagur.github.io/blog/sshole-musl-crypt/">
+<meta property="og:title" content="SSHole: how a crypt() error let disabled passwords log in to sshd on musl">
+<meta property="og:description" content="A walk through the OpenSSH and musl source behind CVE-2026-123158, the fix in OpenSSH 10.6p2, and how to check Alpine and other musl systems.">
+<meta property="og:image" content="https://github.com/kapildagur.png">
+<meta property="article:published_time" content="2026-11-11">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23080c10'/%3E%3Cg fill='none' stroke='%2300e6a0' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 7c-3 0-4 1.5-4 4v5c0 2-1 3-3 3c2 0 3 1 3 3v5c0 2.5 1 4 4 4'/%3E%3Cpath d='M30 7c3 0 4 1.5 4 4v5c0 2 1 3 3 3c-2 0-3 1-3 3v5c0 2.5-1 4-4 4'/%3E%3C/g%3E%3Ctext x='20' y='25' text-anchor='middle' font-family='sans-serif' font-weight='800' font-size='12' fill='%23e2e8f0'%3EKD%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../blog.css?v=11">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<nav class="site-nav" aria-label="Site">
+  <a class="logo" href="../../" aria-label="Kapil Dagur, home"><svg class="logo-mark" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true" focusable="false"><g fill="none" stroke="#00e6a0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6c-3 0-4 1.5-4 4v5c0 2-1 3-3 3c2 0 3 1 3 3v5c0 2.5 1 4 4 4" transform="translate(1 1)"/><path d="M31 6c3 0 4 1.5 4 4v5c0 2 1 3 3 3c-2 0-3 1-3 3v5c0 2.5-1 4-4 4" transform="translate(-1 1)"/></g><text x="20" y="24.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="11" fill="#e2e8f0">KD</text></svg></a>
+  <ul>
+    <li><a href="../../">Home</a></li>
+    <li><a href="../" aria-current="page">Blog</a></li>
+  </ul>
+</nav>
+
+<main id="main">
+<article>
+  <p class="post-meta">11 Nov 2026 · 12 min read · Security, Linux</p>
+  <h1>SSHole: how a crypt() error let disabled passwords log in to sshd on musl</h1>
+  <p class="lede">An account with no password should never accept one. On some Alpine servers it did, because an error string from the C library looked exactly like a disabled password.</p>
+
+  <p>On 5 November 2026, OpenSSH released 10.6p2 with one change: a workaround for a password authentication bypass on Linux systems that use musl libc with PAM disabled. Alpine shipped patched packages the same day. The bug is tracked as <a href="https://security.alpinelinux.org/vuln/CVE-2026-123158">CVE-2026-123158</a>, and <a href="https://safe.security/resources/blog/sshole-high-severity-openssh-vulnerability-turns-disabled-passwords-into-unauthorized-access/">SAFE Security</a> named it "SSHole" and rated it 8.1 (High). It was reported by Özgün Kültekin of Wakefield.</p>
+
+  <p>The advisories tell you to upgrade, and you should. I also wanted to know why it happened, so I read the code on both sides, sshd and musl, and ran musl's <code>crypt()</code> myself. The bug is small and easy to follow, and it carries a lesson for anyone who writes code that returns error values.</p>
+
+  <h2 id="affected">Who is affected</h2>
+
+  <p>All of these have to be true:</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Condition</th><th>How to check</th></tr></thead>
+    <tbody>
+      <tr><td>OpenSSH older than 10.6p2, or an Alpine package older than the fixed one for its branch</td><td><code>sshd -V</code>, <code>apk list --installed 'openssh*'</code></td></tr>
+      <tr><td>sshd is linked against musl libc</td><td><code>ls /lib/ld-musl-*</code></td></tr>
+      <tr><td>sshd does not use PAM: built without it, or <code>UsePAM no</code></td><td><code>sshd -T | grep -i usepam</code> prints nothing or <code>usepam no</code></td></tr>
+      <tr><td>Password authentication is on</td><td><code>sshd -T | grep -i passwordauthentication</code></td></tr>
+      <tr><td>An account that may log in has <code>*</code> as its password field</td><td>see <a href="#check">Checking your systems</a></td></tr>
+      <tr><td>Another account has a SHA-256 (<code>$5$</code>) or SHA-512 (<code>$6$</code>) password hash</td><td>see <a href="#check">Checking your systems</a></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Alpine is the obvious case: it uses musl, and its default <code>openssh-server</code> package is built without PAM. Alpine also ships <code>openssh-server-pam</code>, but on Alpine 3.22 that build still defaults to <code>UsePAM no</code>, so it takes the same code path unless you turn PAM on. Containers built on Alpine and small appliances built on musl are the other places to look. Distributions built on glibc, such as Debian, Ubuntu and RHEL, are not affected, and the reason why is one of the more interesting parts of this story.</p>
+
+  <h2 id="shadow">What the password field holds</h2>
+
+  <p>The second field of each line in <code>/etc/shadow</code> holds either a password hash or a marker that says there is no usable password:</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Value</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>$6$salt$hash</code></td><td>A SHA-512 crypt hash. <code>$5$</code> is SHA-256, <code>$1$</code> is MD5, <code>$2b$</code> is bcrypt.</td></tr>
+      <tr><td><code>*</code></td><td>No password has ever been set. Password login is impossible because no input can hash to <code>*</code>.</td></tr>
+      <tr><td><code>!</code> or <code>!</code> followed by a hash</td><td>The account is locked, usually by <code>passwd -l</code>.</td></tr>
+      <tr><td>empty</td><td>No password at all. sshd refuses this unless <code>PermitEmptyPasswords</code> is on.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>The <code>*</code> marker rests on one assumption: no password can ever hash to <code>*</code>. That is true as long as <code>crypt()</code> only ever returns real hashes. On musl, it does not.</p>
+
+  <h2 id="sshd">How sshd checks a password without PAM</h2>
+
+  <p>Without PAM, OpenSSH portable checks passwords itself, in <code>sys_auth_passwd()</code> in <code>auth-passwd.c</code>. This is the function exactly as it stood before the fix:</p>
+
+<pre><code class="language-c">int
+sys_auth_passwd(struct ssh *ssh, const char *password)
+{
+    Authctxt *authctxt = ssh-&gt;authctxt;
+    struct passwd *pw = authctxt-&gt;pw;
+    char *encrypted_password, *salt = NULL;
+
+    /* Just use the supplied fake password if authctxt is invalid */
+    char *pw_password = authctxt-&gt;valid ? shadow_pw(pw) : pw-&gt;pw_passwd;
+
+    if (pw_password == NULL)
+        return 0;
+
+    /* Check for users with no password. */
+    if (strcmp(pw_password, "") == 0 &amp;&amp; strcmp(password, "") == 0)
+        return (1);
+
+    /*
+     * Encrypt the candidate password using the proper salt, or pass a
+     * NULL and let xcrypt pick one.
+     */
+    if (authctxt-&gt;valid &amp;&amp; pw_password[0] &amp;&amp; pw_password[1])
+        salt = pw_password;
+    encrypted_password = xcrypt(password, salt);
+
+    /*
+     * Authentication is accepted if the encrypted passwords
+     * are identical.
+     */
+    return encrypted_password != NULL &amp;&amp;
+        strcmp(encrypted_password, pw_password) == 0;
+}</code></pre>
+
+  <p>The logic is the classic Unix one: hash what the user typed with the stored value as the salt, and accept if the result equals the stored value. The detail that matters is the salt line. A stored value of <code>*</code> is one character long, so <code>pw_password[1]</code> is the terminating zero, and the salt stays <code>NULL</code>.</p>
+
+  <p>With a <code>NULL</code> salt, <code>xcrypt()</code> calls <code>pick_salt()</code>. That function exists so that sshd spends the same time on accounts with no real hash as on accounts with one; otherwise the response time would tell an attacker which accounts have passwords. It walks the password database and borrows the prefix of the first hash that starts with <code>$</code>:</p>
+
+<pre><code class="language-c">strlcpy(salt, "xx", sizeof(salt));
+setpwent();
+while ((pw = getpwent()) != NULL) {
+    if ((passwd = shadow_pw(pw)) == NULL)
+        continue;
+    if (passwd[0] == '$' &amp;&amp; (p = strrchr(passwd+1, '$')) != NULL) {
+        typelen = p - passwd + 1;
+        /* (bcrypt case omitted) */
+        strlcpy(salt, passwd, MINIMUM(typelen, sizeof(salt)));
+        explicit_bzero(passwd, strlen(passwd));
+        goto out;
+    }
+}</code></pre>
+
+  <p>So on a server where the <code>alpine</code> account has <code>*</code> and the <code>root</code> account has a <code>$6$</code> hash, a login attempt as <code>alpine</code> is hashed as SHA-512 with root's salt. Then the result is compared with <code>*</code>. Nothing here is wrong on its own. The comparison is only safe as long as <code>crypt()</code> cannot return <code>*</code>.</p>
+
+  <h2 id="musl">What musl's crypt() returns on failure</h2>
+
+  <p>musl's SHA-512 implementation, in <code>src/crypt/crypt_sha512.c</code>, refuses long keys:</p>
+
+<pre><code class="language-c">#define KEY_MAX 256
+
+/* in sha512crypt(): reject large keys */
+for (i = 0; i &lt;= KEY_MAX &amp;&amp; key[i]; i++);
+if (i &gt; KEY_MAX)
+    return 0;</code></pre>
+
+  <p>The limit is reasonable: SHA-crypt does work in proportion to the key length on every round, so an unbounded key is a cheap way to burn CPU. The problem is what the public wrapper does with that failure:</p>
+
+<pre><code class="language-c">p = sha512crypt(key, setting, output);
+/* self test and stack cleanup */
+q = sha512crypt(testkey, testsetting, testbuf);
+if (!p || q != testbuf || memcmp(testbuf, testhash, sizeof testhash))
+    return "*";
+return p;</code></pre>
+
+  <p>On any failure it returns the string <code>"*"</code>. The SHA-256 code does the same. I checked it on Alpine 3.22.8 with a ten-line C program that calls <code>crypt()</code> with keys of 256, 257 and 1024 bytes:</p>
+
+<pre><code class="language-plaintext">salt=$6$  len=256  -&gt; $6$$.li6TVmnFwaNje3g...
+salt=$6$  len=257  -&gt; *
+salt=$6$  len=1024 -&gt; *
+salt=$5$  len=256  -&gt; $5$$lML5nAh9pjF4vPnH...
+salt=$5$  len=257  -&gt; *
+salt=$1$  len=257  -&gt; $1$$oiNhWHvhmJpyzoQX...
+salt=xx   len=257  -&gt; xxJJqYuu8A9oE</code></pre>
+
+  <p>Up to 256 bytes you get a hash. From 257 bytes on, SHA-256 and SHA-512 return <code>*</code>. MD5 and traditional DES carry on hashing, which is why the bug needs a <code>$5$</code> or <code>$6$</code> hash somewhere on the system for <code>pick_salt()</code> to borrow.</p>
+
+  <h2 id="together">Putting it together</h2>
+
+  <ol>
+    <li>A client asks to log in as an account whose password field is <code>*</code>, and sends a password longer than 256 bytes. sshd caps passwords at 1024 bytes, so the window is 257 to 1024.</li>
+    <li>The stored value is one character, so sshd passes no salt, and <code>pick_salt()</code> returns the <code>$6$</code> prefix of another account.</li>
+    <li>musl rejects the key as too long and returns <code>"*"</code>.</li>
+    <li>sshd compares <code>"*"</code> with the stored <code>"*"</code>. They are equal, and the login succeeds.</li>
+  </ol>
+
+  <p>No credential is stolen and no key is needed. The attacker gets a shell with whatever rights the target account has.</p>
+
+  <div class="callout">
+    <p>Accounts locked with <code>!</code> are not affected through this path. The stored value <code>!</code> is also one character, so the salt is borrowed in the same way, but <code>"*"</code> does not equal <code>"!"</code>, so the comparison fails.</p>
+  </div>
+
+  <h2 id="glibc">Why glibc systems are not affected</h2>
+
+  <p>Most glibc distributions get <code>crypt()</code> from libxcrypt. I ran the same check on Debian 13:</p>
+
+<pre><code class="language-plaintext">$6$  256  -&gt; $6$$.li6TVmnFwaNje3g...
+$6$  257  -&gt; $6$$VVoAsM9yOuDXnTJT...
+$6$  512  -&gt; *0
+$6$  1024 -&gt; *0
+setting "*0"  -&gt; *1</code></pre>
+
+  <p>libxcrypt accepts longer keys, up to 511 bytes, but the real difference is the failure value. It returns <code>*0</code>, and when the setting itself starts with <code>*0</code> it returns <code>*1</code>. The <a href="https://github.com/besser82/libxcrypt/blob/develop/doc/crypt.3">libxcrypt crypt(3) manual</a> says the invalid hash "will not compare equal to setting", and that this is "chosen to make these applications fail closed when an error occurs". The usual caller passes the stored hash as the setting, so a failure can never match it. And because the token is always two characters, it cannot match the one-character <code>*</code> either. musl's failure value is that one character, and it happens to be the most common marker for "no password".</p>
+
+  <p>That is the whole bug in one sentence: <strong>the error value of one library was a valid value in the data another program compared it against.</strong></p>
+
+  <h2 id="fix">The fix in OpenSSH 10.6p2</h2>
+
+  <p>The <a href="https://github.com/openssh/openssh-portable/commit/4353fdc43ef646c43a8dda7025cc1a898caf1482">commit</a> by Damien Miller is short. The part that closes the bypass is a minimum length for the stored hash:</p>
+
+<pre><code class="language-diff">+#define MIN_PASSWORD_HASH_LEN    4
+ #define MAX_PASSWORD_LEN    1024
+...
+-    return encrypted_password != NULL &amp;&amp;
++    ret = encrypted_password != NULL &amp;&amp;
++        strlen(pw_password) &gt;= MIN_PASSWORD_HASH_LEN &amp;&amp;
+         strcmp(encrypted_password, pw_password) == 0;
++    freezero(pw_password, strlen(pw_password));
++    return ret;</code></pre>
+
+  <p>No real hash is shorter than four characters. Even a traditional DES hash is 13. So a stored marker such as <code>*</code>, <code>!</code> or <code>!!</code> can no longer match anything, whatever <code>crypt()</code> returns. The rest of the commit makes <code>shadow_pw()</code> always return a heap copy that the caller wipes with <code>freezero()</code>, so the hash does not linger in memory.</p>
+
+  <p>The <a href="https://www.openssh.org/releasenotes.html">release notes</a> state the maintainers' view plainly: "We consider the root cause of this bug to be outside sshd, but it is exploitable via sshd and can be avoided there." That is a fair reading. The check belongs in sshd anyway, because sshd is the program making the security decision, and it cannot assume every libc fails the way glibc does.</p>
+
+  <h2 id="alpine-cloud">Why Alpine cloud images matter</h2>
+
+  <p>SAFE Security points out that the official Alpine cloud images from 3.18.11 to 3.24.3 create an <code>alpine</code> account with <code>*</code> as its password field and passwordless <code>doas</code>, so a login as <code>alpine</code> leads straight to root. A fresh image is not exploitable, because no account has a <code>$5$</code> or <code>$6$</code> hash for <code>pick_salt()</code> to borrow. It becomes exploitable the moment someone sets a password on any account, for example a root password for the serial console, and password authentication is on.</p>
+
+  <p>This is a good example of how two harmless settings combine. Neither "set a console password" nor "leave password authentication on" looks dangerous alone.</p>
+
+  <h2 id="check">Checking your systems</h2>
+
+  <p>Run these as root on each musl host. First, the sshd build and configuration:</p>
+
+<pre><code class="language-bash">sshd -V
+ls /lib/ld-musl-* 2&gt;/dev/null &amp;&amp; echo "musl"
+sshd -T | grep -Ei '^(usepam|passwordauthentication|permitrootlogin) '</code></pre>
+
+  <p>A build without PAM does not print a <code>usepam</code> line at all. Both a missing line and <code>usepam no</code> mean sshd checks passwords itself; only <code>usepam yes</code> avoids the vulnerable function.</p>
+
+  <p>Then the accounts. The first command lists accounts that have <code>*</code> and a login shell. The second shows whether any SHA-crypt hash exists for <code>pick_salt()</code> to borrow:</p>
+
+<pre><code class="language-bash"># Accounts with "*" and a shell that is not nologin or false
+awk -F: 'NR==FNR { if ($2 == "*") star[$1]; next }
+         ($1 in star) &amp;&amp; $7 !~ /(nologin|false)$/ { print $1, $7 }' \
+    /etc/shadow /etc/passwd
+
+# Number of SHA-256 or SHA-512 hashes on the system
+awk -F: '$2 ~ /^\$[56]\$/' /etc/shadow | wc -l</code></pre>
+
+  <p>If the first command prints an account, the second prints a number above zero, sshd is older than 10.6p2 and password authentication is on, the host is exposed.</p>
+
+  <p>Expect <code>root</code> in that list. In the Alpine 3.22 container image, root's password field is <code>*</code>. The default <code>PermitRootLogin without-password</code> refuses password logins for root, so root is safe by default, but a host that changed it to <code>yes</code> is exposed through root itself. Accounts created with <code>adduser -D</code> get <code>!</code> and are not affected. Remember that <code>AllowUsers</code>, <code>DenyUsers</code> and <code>Match</code> blocks can still stop a given account from logging in.</p>
+
+  <p>To look for past use, search the logs for password logins to those accounts. On Alpine, sshd logs to <code>/var/log/messages</code> by default:</p>
+
+<pre><code class="language-bash">grep 'Accepted password for' /var/log/messages</code></pre>
+
+  <p>sshd does not log the length of a password, so you cannot see the long password itself. The useful signal is a successful password login to an account that has no password.</p>
+
+  <h2 id="remediate">What to do</h2>
+
+  <p><strong>Upgrade, then restart sshd.</strong> Alpine published these fixed versions of the <code>openssh</code> package:</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Alpine branch</th><th>Fixed version</th></tr></thead>
+    <tbody>
+      <tr><td>edge</td><td>10.6_p2-r0</td></tr>
+      <tr><td>3.24</td><td>10.3_p1-r2</td></tr>
+      <tr><td>3.23</td><td>10.2_p1-r1</td></tr>
+      <tr><td>3.22</td><td>10.0_p1-r11</td></tr>
+      <tr><td>3.21</td><td>9.9_p2-r1</td></tr>
+      <tr><td>3.20</td><td>9.7_p1-r6</td></tr>
+      <tr><td>3.19</td><td>9.7_p2-r5 or 9.6_p1-r3</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+<pre><code class="language-bash">apk update &amp;&amp; apk upgrade
+rc-service sshd restart</code></pre>
+
+  <p>The restart matters. Upgrading the package replaces the file on disk, but the sshd that is already running keeps the old code until it restarts. For containers, rebuild the image and redeploy it; upgrading a running container does not survive the next restart.</p>
+
+  <p><strong>If you cannot upgrade today, turn off password authentication.</strong> Most servers should have it off anyway. Make sure your key login works first, in a second session, so you do not lock yourself out:</p>
+
+<pre><code class="language-bash"># In /etc/ssh/sshd_config, and in any Match block that turns it back on
+PasswordAuthentication no</code></pre>
+
+<pre><code class="language-bash">sshd -t                                    # syntax check
+sshd -T | grep -i '^passwordauthentication '
+rc-service sshd restart</code></pre>
+
+  <p><strong>Then reduce what one login can reach.</strong> Review accounts with passwordless <code>sudo</code> or <code>doas</code>, keep SSH off the public internet where you can, and put it behind a VPN or a bastion host. None of that replaces the patch, but it limits the damage of the next bug like this one.</p>
+
+  <h2 id="lessons">What I take away as a developer</h2>
+
+  <p>I write Python services, not SSH daemons, but this pattern turns up everywhere: a function signals failure with a value that could also be a valid result. A <code>-1</code> that is also a valid index, an empty string that is also a valid name, a <code>"*"</code> that is also a stored password marker. The caller checks the result against data, and the error slips through as a match.</p>
+
+  <ul>
+    <li><strong>Make errors impossible to confuse with data.</strong> Raise an exception, return <code>None</code>, or return a result type. If a sentinel string is unavoidable, choose it so it can never equal a valid value, as libxcrypt does.</li>
+    <li><strong>Validate the shape before comparing.</strong> A hash has a known format and length. Checking it before <code>==</code> is exactly what the OpenSSH fix does.</li>
+    <li><strong>Read the failure contract of every dependency.</strong> Two libraries can implement the same function name and fail in different ways. Code that is correct on glibc was wrong on musl.</li>
+    <li><strong>Test with boundary inputs.</strong> A test with a 257-byte password on a musl build would have caught this. Inputs just past every documented limit are cheap to add to a test suite.</li>
+  </ul>
+
+  <h2 id="close">Final thought</h2>
+
+  <p>Nothing in this bug is exotic: no memory corruption, no race, no cryptography broken. Two pieces of code that were each reasonable on their own disagreed about what <code>"*"</code> means. Those are the bugs I find most worth reading about, because they are the ones I could write myself.</p>
+
+  <p>If you run Alpine anywhere, check today: upgrade, restart sshd, and turn off password authentication on servers that do not need it.</p>
+
+  <h2 id="sources">Sources</h2>
+  <ul class="sources">
+    <li>OpenSSH, <a href="https://www.openssh.org/releasenotes.html">release notes for OpenSSH 10.6p2</a> (5 November 2026)</li>
+    <li>OpenSSH portable, <a href="https://github.com/openssh/openssh-portable/commit/4353fdc43ef646c43a8dda7025cc1a898caf1482">commit 4353fdc "avoid password authn bypass"</a>; <a href="https://github.com/openssh/openssh-portable/blob/3c6ec4c/auth-passwd.c">auth-passwd.c</a> and <a href="https://github.com/openssh/openssh-portable/blob/3c6ec4c/openbsd-compat/xcrypt.c">openbsd-compat/xcrypt.c</a> before the fix</li>
+    <li>musl libc, <a href="https://git.musl-libc.org/cgit/musl/tree/src/crypt/crypt_sha512.c">src/crypt/crypt_sha512.c</a></li>
+    <li>Alpine Linux security tracker, <a href="https://security.alpinelinux.org/vuln/CVE-2026-123158">CVE-2026-123158</a></li>
+    <li>SAFE Security, <a href="https://safe.security/resources/blog/sshole-high-severity-openssh-vulnerability-turns-disabled-passwords-into-unauthorized-access/">SSHole: high-severity OpenSSH vulnerability turns disabled passwords into unauthorized access</a> (6 November 2026)</li>
+    <li>libxcrypt, <a href="https://github.com/besser82/libxcrypt/blob/develop/doc/crypt.3">crypt(3)</a>; Linux man-pages, <a href="https://man7.org/linux/man-pages/man5/shadow.5.html">shadow(5)</a></li>
+  </ul>
+</article>
+</main>
+
+<footer>
+  <p>Kapil Dagur · <a href="../../">kapildagur.github.io</a> · <a href="https://github.com/kapildagur">GitHub</a> · <a href="https://linkedin.com/in/kapildagur">LinkedIn</a></p>
+</footer>
+<script src="../assets/highlight/highlight.min.js" defer></script>
+<script src="../assets/highlight/init.js" defer></script>
+</body>
+</html>

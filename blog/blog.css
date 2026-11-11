@@ -140,6 +140,7 @@ main.index { max-width: 1040px; }
 .topic-fintech { --topic: var(--amber); }
 .topic-python  { --topic: var(--green); }
 .topic-tooling { --topic: #c4b5fd; }
+.topic-security { --topic: #ff8a80; }
 
 /* Terminal-style header. */
 .blog-head { margin-bottom: 28px; }
