@@ -1,149 +1,174 @@
-\documentclass[10.5pt, a4paper]{article}
+% One-page A4 resume in a single column, built with pdflatex so ATS parsers read clean text.
+\documentclass[10pt, a4paper]{article}
 
-\usepackage[top=0.45in, bottom=0.45in, left=0.5in, right=0.5in]{geometry}
-\usepackage[hidelinks, colorlinks=false]{hyperref}
-\usepackage{enumitem}
-\usepackage[dvipsnames]{xcolor}
-\usepackage{array}
-\usepackage{tabularx}
-\usepackage{titlesec}
-\usepackage{parskip}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage[top=0.38in, bottom=0.32in, left=0.5in, right=0.5in]{geometry}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
 
-\definecolor{navy}{RGB}{26, 86, 155}
-\definecolor{darkgray}{RGB}{40, 40, 40}
-\definecolor{midgray}{RGB}{90, 90, 90}
+% ATS parsers match keywords letter by letter: map every glyph to Unicode and keep "fi" and "fl"
+% as two letters. Dashes stay ligatures, so "--" still prints an en dash.
+\input{glyphtounicode}
+\pdfgentounicode=1
+\DisableLigatures[f]{encoding = *, family = *}
 
+\hypersetup{
+  pdftitle={Kapil Dagur - Resume},
+  pdfauthor={Kapil Dagur},
+  pdfsubject={Python Backend Engineer, AI and Fintech},
+}
+
+% A word split across lines reads as two words to a parser, so nothing is hyphenated.
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\raggedright
 \pagestyle{empty}
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{0pt}
 
-% Section style
-\titleformat{\section}[block]
-  {\bfseries\large\color{navy}}
-  {}{0pt}{}
-  [{\color{navy}\hrule height 0.6pt}]
-\titlespacing*{\section}{0pt}{6pt}{3pt}
+% Base LaTeX only, so the file builds on any TeX installation without extra packages.
+\renewcommand{\section}[1]{%
+  \par\vspace{4pt}{\fontsize{10.5}{12.6}\selectfont\bfseries #1}\par\vspace{1.5pt}%
+  \hrule height 0.8pt\vspace{2.5pt}}
+\renewenvironment{itemize}{%
+  \begin{list}{\textbullet}{%
+    \setlength{\leftmargin}{1.2em}\setlength{\labelwidth}{0.8em}\setlength{\labelsep}{0.4em}%
+    \setlength{\topsep}{0.8pt}\setlength{\partopsep}{0pt}%
+    \setlength{\itemsep}{0.4pt}\setlength{\parsep}{0pt}}}%
+  {\end{list}}
 
-% Lists
-\setlist[itemize]{leftmargin=1.3em, topsep=2pt, itemsep=1pt, parsep=0pt, label=\textbullet}
-
-% Macros
-\newcommand{\jobtitle}[4]{%
-  {\bfseries #1}\hfill{\small\color{midgray}\textit{#2}}\\[-2pt]
-  {\small\color{midgray}\textit{#3}}\hfill{\small\color{midgray}#4}\par\vspace{2pt}%
-}
-
-\newcommand{\projline}[3]{%
-  {\bfseries\color{navy}#1} {\small $|$} {\small\color{midgray}\textit{#2}}\\[-2pt]
-  {\small\color{midgray}#3}\par\vspace{1pt}%
-}
-
-\newcommand{\edline}[4]{%
-  {\bfseries #1}\hfill{\small\color{midgray}\textit{#2}}\\[-2pt]
-  {\small\color{midgray}\textit{#3}}\hfill{\small\color{midgray}#4}\par\vspace{2pt}%
-}
+\newcommand{\sep}{~~\textbar~~}
+\newcommand{\entry}[2]{\textbf{#1}\hfill\textbf{#2}\par}
+\newcommand{\gap}{\par\vspace{2pt}}
 
 \begin{document}
+\fontsize{9.5}{11.3}\selectfont
 
-% ═══ HEADER ══════════════════════════════════════════════
 {\centering
-  {\huge\bfseries\color{darkgray} KAPIL DAGUR}\par\vspace{4pt}
-  {\small\color{midgray}
-    Noida, India
-    ~$\cdot$~
-    +91-8533-939-537
-    ~$\cdot$~
-    \href{mailto:kapildagur1306@gmail.com}{kapildagur1306@gmail.com}\\[1pt]
-    \href{https://linkedin.com/in/kapildagur}{linkedin.com/in/kapildagur}
-    ~$\cdot$~
-    \href{https://github.com/kapildagur}{github.com/kapildagur}
-    ~$\cdot$~
+  {\fontsize{22}{26}\selectfont\bfseries KAPIL DAGUR}\par\vspace{1pt}
+  {\fontsize{11.5}{14}\selectfont\bfseries Python Backend Engineer \textbar{} AI and Fintech}\par\vspace{2pt}
+  {\small
+    Noida, India\sep +91-8533-939-537\sep
+    \href{mailto:kapildagur1306@gmail.com}{kapildagur1306@gmail.com}\sep
+    \href{https://linkedin.com/in/kapildagur}{linkedin.com/in/kapildagur}\\
+    \href{https://github.com/kapildagur}{github.com/kapildagur}\sep
     \href{https://kapildagur.github.io}{kapildagur.github.io}
   }\par
 }
 
-\vspace{4pt}
-
-% ═══ SUMMARY ══════════════════════════════════════════════
 \section{SUMMARY}
-{\small Backend engineer with 3 years of experience building Python services with \textbf{Django and FastAPI}. Currently working on \textbf{RBI Account Aggregator} systems (consent, data vault, multi-AA integration) for NBFC lenders. Author of \textbf{fastapi-tenancy} and \textbf{fastapi-locale} on PyPI, and a contributor to \textbf{SQLAlchemy}.}
+Python Backend Engineer with 3 years of experience building REST APIs and backend services with
+Django and FastAPI. Currently working on RBI Account Aggregator systems for NBFC lenders,
+including a bank statement analyzer where a parser redesign cut Gemini API cost by 97\%. Author
+of two FastAPI libraries on PyPI and a contributor to SQLAlchemy.
 
-% ═══ SKILLS ═══════════════════════════════════════════════
 \section{SKILLS}
-{\small
-\begin{tabularx}{\linewidth}{@{} >{\bfseries}p{3.2cm} X @{}}
-Languages          & Python, SQL, JavaScript, C/C++, Bash \\[1.5pt]
-Backend            & FastAPI, Django, Django REST Framework, Flask, Node.js, Express.js, Celery, pytest \\[1.5pt]
-Data               & PostgreSQL, MySQL, MongoDB, Redis, SQLAlchemy, Alembic \\[1.5pt]
-Infrastructure     & Docker, GitHub Actions, Jenkins, AWS (EC2, S3, RDS), Nginx, RabbitMQ \\[1.5pt]
-Fintech            & RBI Account Aggregator, consent management, FIU/FIP and TSP integration, bank statement analysis \\
-\end{tabularx}
-}
+\textbf{Languages:} Python, SQL, JavaScript, C/C++, Bash\par
+\textbf{Backend:} FastAPI, Django, Django REST Framework, Flask, Node.js, Celery, RabbitMQ\par
+\textbf{Generative AI and ML:} LLMs (Gemini API, Ollama), OCR, pandas, NumPy\par
+\textbf{Data:} PostgreSQL, MySQL, MongoDB, Redis, SQLAlchemy, Alembic\par
+\textbf{Cloud and DevOps:} AWS (EC2, S3, RDS), Docker, GitHub Actions, Jenkins, Nginx, pytest\par
+\textbf{Fintech:} RBI Account Aggregator, consent management, FIU/FIP and TSP integration, bank
+statement analysis\par
 
-% ═══ EXPERIENCE ═══════════════════════════════════════════
 \section{EXPERIENCE}
-
-\jobtitle{Software Engineer}{May 2026 -- Present}{SurePass Technologies Pvt. Ltd. $\cdot$ Full-time}{Delhi, India}
-\begin{itemize}\small
-  \item Build backend services for \textbf{finpass.ai}, SurePass's Account Aggregator business, which serves NBFC lenders
-  \item Built the \textbf{consent management system} for the AA flow: creation, approval, revocation and expiry, following the RBI AA framework
-  \item Built a \textbf{multi-AA vault} that stores and serves financial information received from different aggregators
-  \item Put \textbf{multiple AAs and TSPs} behind one interface, so lenders keep receiving data when a provider is unavailable
-  \item Made the \textbf{bank statement analyzer} faster and cheaper to run by reworking its pipeline and queries
+\entry{Software Engineer \textbar{} SurePass Technologies Pvt. Ltd., Delhi}{May 2026 -- Present}
+\textbf{Product:} finpass.ai, SurePass's Account Aggregator business, which delivers customer
+financial data to NBFC lenders
+\begin{itemize}
+  \item Cut the Gemini API cost of the bank statement analyzer (BSA) by 97\%, from about INR 1.48
+    lakh to INR 5,000 a month, by redesigning bank detection in its statement parser
+  \item Reworked the BSA pipeline and queries for faster processing; statements are parsed with a
+    self-hosted LLM on Ollama
+  \item Developed the AA consent management system (creation, approval, revocation, expiry) in
+    line with the RBI AA framework
+  \item Built a multi-AA data vault that stores and serves financial information received from
+    multiple aggregators
+  \item Integrated multiple AAs and TSPs behind one interface with failover, so lenders still
+    receive data if a provider fails
+\end{itemize}
+\gap
+\entry{Python Backend Developer \textbar{} In2IT Technologies Pvt. Ltd., Noida}{Apr 2024 -- Apr 2026}
+\textbf{Products:} iProvision, iDashboard, ProWatch
+\begin{itemize}
+  \item Developed REST APIs for iProvision, a network inventory and device management platform
+    serving 10,000+ concurrent users, with device operations over SNMP and NETCONF/RESTCONF;
+    helped cut network downtime by 40\%
+  \item Built backend services for ProWatch, an employee performance monitoring and system
+    management platform, including AI OCR that classifies screenshots of employee screens by
+    active application and capture time
+  \item Cut API latency by 69\% (800 to 250 ms) and tripled capacity with Redis caching, Celery
+    queues and PostgreSQL tuning
+  \item Developed backend services for iDashboard, a custom dashboard and chart builder
+  \item Built CI/CD (Docker, GitHub Actions, Jenkins) at 85\%+ test coverage: 35\% fewer production
+    bugs, 60\% faster deploys
+\end{itemize}
+\gap
+\entry{Backend Developer (Apprenticeship) \textbar{} CodeQuotient Pvt. Ltd., Remote}{Jun 2023 -- Dec 2023}
+\begin{itemize}
+  \item Developed REST APIs for CodeQuotient's education platform using Node.js, Express.js and
+    Django REST Framework
 \end{itemize}
 
-\vspace{3pt}
-
-\jobtitle{Python Backend Developer}{Apr 2024 -- Apr 2026}{In2IT Technologies Pvt. Ltd. $\cdot$ Full-time}{Noida, India}
-\begin{itemize}\small
-  \item Built REST APIs for \textbf{iProvision}, a network inventory and device management platform that runs device operations over SNMP and NETCONF/RESTCONF, used by \textbf{10,000+ concurrent users}; helped cut network downtime by \textbf{40\%}
-  \item Brought API response time from \textbf{800 ms to 250 ms} with Redis caching, Celery task queues and PostgreSQL query tuning, and scaled request handling \textbf{3x}
-  \item Built backend services for \textbf{iDashboard}, a tool for building custom dashboards and charts, and \textbf{ProWatch}, an employee performance monitoring app that also manages employees' systems
-  \item Set up CI/CD with Docker, GitHub Actions and Jenkins with 85\%+ test coverage, cutting production bugs by \textbf{35\%} and deployment time by \textbf{60\%}
+\section{PROJECTS}
+\entry{Credit Desk \textbar{} Python, Claude API, Ollama, pgvector, LangGraph, scikit-learn, MCP}{Nov 2026 -- Present}
+\begin{itemize}
+  \item Building an AI assistant for NBFC credit teams that answers RBI questions with cited
+    paragraphs: RAG with embeddings and hybrid vector and full-text search
+  \item Bank statement analysis: ML transaction categorization, with income, EMI and FOIR computed in
+    code
+  \item LangGraph agent that drafts credit notes, checks every figure and waits for analyst sign-off
+    (human in the loop)
+  \item Model gateway for Claude, OpenAI and local Ollama models with prompt templates, cost tracking
+    and LLM evaluation sets; HTTP API, CLI and MCP server
 \end{itemize}
 
-\vspace{3pt}
-
-\jobtitle{Backend Developer (Node.js / Python)}{Jun 2023 -- Dec 2023}{CodeQuotient Pvt. Ltd. $\cdot$ Apprenticeship}{Remote}
-\begin{itemize}\small
-  \item Built REST APIs for CodeQuotient's education platform using \textbf{Node.js, Express.js and Django REST Framework}
-\end{itemize}
-
-% ═══ PROJECTS ════════════════════════════════════════════
 \section{OPEN SOURCE}
-
-\projline{fastapi-tenancy (author, maintainer)}{FastAPI, SQLAlchemy, Alembic, Redis, JWT}{Aug 2025 -- Present \quad \href{https://github.com/fastapi-extensions/fastapi-tenancy}{github.com/fastapi-extensions/fastapi-tenancy} \quad \href{https://pypi.org/project/fastapi-tenancy/}{pypi.org/project/fastapi-tenancy}}
-\begin{itemize}\small
-  \item Multi-tenancy for FastAPI with \textbf{4 isolation strategies} (schema, database, row-level security, hybrid); fully async; PostgreSQL, MySQL, SQLite and SQL Server; \textbf{90\%+ test coverage}
+\entry{fastapi-tenancy (author, maintainer) \textbar{} FastAPI, SQLAlchemy, Alembic, Redis,
+  JWT}{Aug 2025 -- Present}
+{\small\href{https://github.com/fastapi-extensions/fastapi-tenancy}{github.com/fastapi-extensions/fastapi-tenancy}\sep
+\href{https://pypi.org/project/fastapi-tenancy/}{pypi.org/project/fastapi-tenancy}}\par
+\begin{itemize}
+  \item Multi-tenancy library for FastAPI with 4 isolation strategies (schema, database, row-level
+    security, hybrid); fully async; supports PostgreSQL, MySQL, SQLite and SQL Server; 90\%+ test
+    coverage
+\end{itemize}
+\gap
+\entry{fastapi-locale (author, maintainer) \textbar{} FastAPI, Pydantic, Babel, gettext}{Sep 2026 -- Present}
+{\small\href{https://github.com/fastapi-extensions/fastapi-locale}{github.com/fastapi-extensions/fastapi-locale}\sep
+\href{https://pypi.org/project/fastapi-locale/}{pypi.org/project/fastapi-locale}}\par
+\begin{itemize}
+  \item Internationalization for FastAPI on gettext: per-request locale, localized 422 errors with
+    plural forms, catalog-check CLI
+\end{itemize}
+\gap
+\entry{SQLAlchemy (contributor) \textbar{} Python, PostgreSQL, mypy}{\small\mdseries
+  \href{https://github.com/sqlalchemy/sqlalchemy}{github.com/sqlalchemy/sqlalchemy}}
+\begin{itemize}
+  \item Raise a clear error when a PostgreSQL ENUM or DOMAIN type uses a reserved name
+    (\href{https://github.com/sqlalchemy/sqlalchemy/commit/555a18ac02}{555a18ac}, PR \#12822)
+  \item Add inline type hints to sqlalchemy.sql.base
+    (\href{https://github.com/sqlalchemy/sqlalchemy/commit/e47d652653}{e47d6526}, PR \#12707); both
+    released in 2.1.0b1
 \end{itemize}
 
-\vspace{3pt}
-
-\projline{fastapi-locale (author, maintainer)}{FastAPI, Pydantic, Babel, gettext}{Sep 2026 -- Present \quad \href{https://github.com/fastapi-extensions/fastapi-locale}{github.com/fastapi-extensions/fastapi-locale} \quad \href{https://pypi.org/project/fastapi-locale/}{pypi.org/project/fastapi-locale}}
-\begin{itemize}\small
-  \item Internationalization for FastAPI on gettext catalogs: per-request locale, localized 422 validation errors with plural forms, and a CLI that checks catalogs in CI
-\end{itemize}
-
-\vspace{3pt}
-
-\projline{SQLAlchemy (contributor)}{Python, PostgreSQL, mypy}{\href{https://github.com/sqlalchemy/sqlalchemy}{github.com/sqlalchemy/sqlalchemy}}
-\begin{itemize}\small
-  \item Raise a clear error when a PostgreSQL ENUM or DOMAIN type uses a reserved name (\href{https://github.com/sqlalchemy/sqlalchemy/commit/555a18ac02}{555a18ac}, PR \#12822)
-  \item Add inline type hints to \texttt{sqlalchemy.sql.base} (\href{https://github.com/sqlalchemy/sqlalchemy/commit/e47d652653}{e47d6526}, PR \#12707); both released in \textbf{2.1.0b1}
-\end{itemize}
-
-% ═══ EDUCATION ═══════════════════════════════════════════
 \section{EDUCATION}
+\entry{Dr. A.P.J. Abdul Kalam Technical University, Lucknow, Uttar Pradesh}{Sep 2024 -- Jul 2026}
+Master of Technology (M.Tech), Computer Science \& Engineering \textbar{} CGPA 8.29/10\par
+\gap
+\entry{Dr. A.P.J. Abdul Kalam Technical University, Lucknow, Uttar Pradesh}{Aug 2020 -- Aug 2024}
+Bachelor of Technology (B.Tech), Computer Science \& Engineering \textbar{} CGPA 7.89/10\par
 
-\edline{Dr. A.P.J. Abdul Kalam Technical University}{Sep 2024 -- Jul 2026}{Master of Technology (M.Tech), Computer Science \& Engineering $\cdot$ CGPA 8.29/10}{Ghaziabad, India}
-
-\edline{Dr. A.P.J. Abdul Kalam Technical University}{Aug 2020 -- Aug 2024}{Bachelor of Technology (B.Tech), Computer Science \& Engineering $\cdot$ CGPA 7.89/10}{Ghaziabad, India}
-
-% ═══ EXAMS & CERTIFICATIONS ═══════════════════════════════
 \section{EXAMS \& CERTIFICATIONS}
-\begin{itemize}\small
-  \item \textbf{UGC-NET} Computer Science and Applications (June 2026): qualified for Assistant Professor and PhD admission
-  \item \textbf{GATE CSE 2023}: qualified in the third year of B.Tech $\cdot$ HackerRank: Software Engineer, SQL, Problem Solving
+\begin{itemize}
+  \item UGC-NET Computer Science and Applications (June 2026): qualified for Assistant Professor
+    and PhD admission
+  \item GATE CSE 2023: qualified in the third year of B.Tech
+  \item IBM: Python for Data Science; HackerRank: Software Engineer, SQL (Intermediate), Problem
+    Solving (Intermediate)
 \end{itemize}
 
 \end{document}
