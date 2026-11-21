@@ -61,7 +61,7 @@
 
 \section{SUMMARY}
 Python Backend Engineer with 3 years of experience building REST APIs and backend services with
-Django and FastAPI. Currently working on RBI Account Aggregator systems for NBFC lenders,
+Django and FastAPI. Most recently built RBI Account Aggregator systems for NBFC lenders,
 including a bank statement analyzer where a parser redesign cut Gemini API cost by 97\%. Author
 of two FastAPI libraries on PyPI and a contributor to SQLAlchemy.
 
@@ -70,12 +70,12 @@ of two FastAPI libraries on PyPI and a contributor to SQLAlchemy.
 \textbf{Backend:} FastAPI, Django, Django REST Framework, Flask, Node.js, Celery, RabbitMQ\par
 \textbf{Generative AI and ML:} LLMs (Gemini API, Ollama), OCR, pandas, NumPy\par
 \textbf{Data:} PostgreSQL, MySQL, MongoDB, Redis, SQLAlchemy, Alembic\par
-\textbf{Cloud and DevOps:} AWS (EC2, S3, RDS), Docker, GitHub Actions, Jenkins, Nginx, pytest\par
+\textbf{Cloud and DevOps:} AWS (EC2, S3, RDS), Docker, GitHub Actions, Jenkins, Nginx, pytest, ruff, mypy\par
 \textbf{Fintech:} RBI Account Aggregator, consent management, FIU/FIP and TSP integration, bank
 statement analysis\par
 
 \section{EXPERIENCE}
-\entry{Software Engineer \textbar{} SurePass Technologies Pvt. Ltd., Delhi}{May 2026 -- Present}
+\entry{Software Engineer \textbar{} SurePass Technologies Pvt. Ltd., Delhi}{May 2026 -- Nov 2026}
 \textbf{Product:} finpass.ai, SurePass's Account Aggregator business, which delivers customer
 financial data to NBFC lenders
 \begin{itemize}
