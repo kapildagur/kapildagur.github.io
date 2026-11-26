@@ -1,0 +1,91 @@
+% One-page A4 cover letter with the resume's header and typeface, built with pdflatex.
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage[top=0.55in, bottom=0.5in, left=0.8in, right=0.8in]{geometry}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+
+% Map every glyph to Unicode so portals that extract the text read it correctly.
+\input{glyphtounicode}
+\pdfgentounicode=1
+
+\hypersetup{
+  pdftitle={Kapil Dagur - Cover Letter},
+  pdfauthor={Kapil Dagur},
+  pdfsubject={Application for a Python Backend Engineer role},
+}
+
+% Set the role and the company for each application; the defaults read correctly as they are.
+\newcommand{\targetrole}{Python Backend Engineer}
+\newcommand{\targetcompany}{your company}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\raggedright
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+
+\newcommand{\sep}{~~\textbar~~}
+
+\begin{document}
+
+{\centering
+  {\fontsize{22}{26}\selectfont\bfseries KAPIL DAGUR}\par\vspace{1pt}
+  {\fontsize{11.5}{14}\selectfont\bfseries Python Backend Engineer \textbar{} AI and Fintech}\par\vspace{2pt}
+  {\small
+    Noida, India\sep +91-8533-939-537\sep
+    \href{mailto:kapildagur1306@gmail.com}{kapildagur1306@gmail.com}\sep
+    \href{https://linkedin.com/in/kapildagur}{linkedin.com/in/kapildagur}\\
+    \href{https://github.com/kapildagur}{github.com/kapildagur}\sep
+    \href{https://kapildagur.github.io}{kapildagur.github.io}
+  }\par
+}
+\vspace{5pt}\hrule height 0.8pt\vspace{12pt}
+
+\setlength{\parskip}{10pt}
+
+\textbf{Subject: Application for the \targetrole{} role}
+
+Dear Hiring Manager,
+
+I am writing to apply for the \targetrole{} role at \targetcompany{}. I have 3 years of
+experience building REST APIs and backend services in Python with Django and FastAPI, most
+recently on a fintech platform for NBFC lenders. I am available to join immediately.
+
+From May to November 2026, I was a Software Engineer at SurePass Technologies on finpass.ai,
+SurePass's RBI Account Aggregator business, which delivers customer financial data to NBFC lenders.
+I developed the consent management system, covering creation, approval, revocation and expiry in
+line with the RBI AA framework, and built a data vault that stores and serves financial information
+received from multiple aggregators. I also integrated several AAs and TSPs behind one interface with
+failover, so lenders still receive data when a provider fails. On the bank statement analyzer, I
+redesigned bank detection in the statement parser and cut its Gemini API cost by 97\%, from about
+INR 1.48 lakh to INR 5,000 a month.
+
+Before that, I spent two years at In2IT Technologies building backend services for three products.
+For iProvision, a network inventory and device management platform serving more than 10,000
+concurrent users, I developed REST APIs for device operations over SNMP and NETCONF/RESTCONF. Redis
+caching, Celery queues and PostgreSQL tuning brought its API latency down from 800 ms to 250 ms and
+tripled its capacity. I also built the CI/CD pipeline with Docker, GitHub Actions and Jenkins at more
+than 85\% test coverage, which led to 35\% fewer production bugs and 60\% faster deployments.
+
+Outside work, I write and maintain two FastAPI libraries on PyPI: fastapi-tenancy, which provides
+multi-tenancy with four isolation strategies, and fastapi-locale, which provides
+internationalization. Two of my pull requests to SQLAlchemy were released in version 2.1.0b1. I am
+currently building Credit Desk, an AI assistant for NBFC credit teams that answers RBI questions with
+the source paragraphs cited and drafts credit notes for an analyst to approve. I hold an M.Tech in
+Computer Science and Engineering.
+
+I write backend code that is tested, typed and easy for the next engineer to change, and I would
+bring that to your team. My resume is attached, and I am happy to share code samples or complete
+a technical assignment. I would welcome the chance to discuss how I can contribute.
+
+Thank you for your time and consideration.
+
+Sincerely,\\[2pt]
+\textbf{Kapil Dagur}
+
+\end{document}
